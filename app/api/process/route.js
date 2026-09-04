@@ -5,13 +5,15 @@ import { createClient } from '@supabase/supabase-js';
 const ai = new GoogleGenAI();
 
 // Inisialisasi Supabase Server Client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
+
 
 export async function POST(request) {
   try {
+
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    );
     const { rawText } = await request.json();
 
     if (!rawText) {
