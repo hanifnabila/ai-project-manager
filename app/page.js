@@ -1,12 +1,34 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
 
 export default function Home() {
   const [rawText, setRawText] = useState('');
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState([]);
   const [error, setError] = useState('');
+
+  // Ambil data dari Supabase saat halaman pertama kali dibuka
+  useEffect(() => {
+    fetchHistory();
+  }, []);
+
+  const fetchHistory = async () => {
+    const { data, error } = await supabase
+      .from('progress_logs')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (!error && data) {
+      // Format ulang data tasks dari string JSON kembali ke array
+      const formattedData = data.map(item => ({
+        ...item,
+        tasks: typeof item.tasks === 'string' ? JSON.parse(item.tasks) : item.tasks
+      }));
+      setHistory(formattedData);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -23,20 +45,18 @@ export default function Home() {
       });
 
       const result = await res.json();
+      if (!result.success) throw new Error(result.error);
 
-      if (!result.success) {
-        throw new Error(result.error || 'Gagal memproses catatan');
-      }
-
-      // Masukkan hasil analisis ke dalam state riwayat di atas
-      setHistory((prev) => [result.data, ...prev]);
-      setRawText(''); // Reset input
+      setRawText('');
+      fetchHistory(); // Refresh daftar riwayat dari database
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
   };
+
+  // ... (lanjutan return UI HTML seperti sebelumnya)
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900 py-10 px-4 sm:px-6 lg:px-8">
@@ -93,7 +113,7 @@ export default function Home() {
                 <div className="flex justify-between items-start">
                   <h3 className="text-lg font-bold text-indigo-600">{item.project_name}</h3>
                   <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${item.status === 'Completed' ? 'bg-green-100 text-green-800' :
-                      item.status === 'Blocked' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
+                    item.status === 'Blocked' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
                     }`}>
                     {item.status}
                   </span>
