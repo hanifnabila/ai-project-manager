@@ -15,6 +15,8 @@ export default function Home() {
   }, []);
 
   const fetchHistory = async () => {
+    if (!supabase) return;
+
     const { data, error } = await supabase
       .from('progress_logs')
       .select('*')
