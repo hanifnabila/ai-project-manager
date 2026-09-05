@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { supabase } from '@/lib/supabase';
 
 export default function Home() {
@@ -23,6 +23,11 @@ export default function Home() {
   });
   const [manualError, setManualError] = useState('');
   const [manualLoading, setManualLoading] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({ project_name: '', tasks: '', status: 'In Progress', summary: '' });
+  const [editError, setEditError] = useState('');
+  const [editLoading, setEditLoading] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   // Ambil data dari Supabase saat halaman pertama kali dibuka
   useEffect(() => {
@@ -112,6 +117,69 @@ export default function Home() {
     }
   };
 
+  const openEdit = (item) => {
+    setEditingId(item.id);
+    setEditForm({
+      project_name: item.project_name || '',
+      tasks: (item.tasks || []).join('\n'),
+      status: item.status || 'In Progress',
+      summary: item.summary || '',
+    });
+    setEditError('');
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditForm({ project_name: '', tasks: '', status: 'In Progress', summary: '' });
+    setEditError('');
+  };
+
+  const saveEdit = async (e) => {
+    e.preventDefault();
+    setEditLoading(true);
+    setEditError('');
+
+    try {
+      const res = await fetch('/api/progress', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: editingId, ...editForm }),
+      });
+
+      const result = await res.json();
+      if (!result.success) throw new Error(result.error);
+
+      cancelEdit();
+      fetchHistory();
+    } catch (err) {
+      setEditError(err.message);
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Hapus catatan ini? Tindakan tidak dapat dibatalkan.')) return;
+
+    setDeletingId(id);
+    try {
+      const res = await fetch('/api/progress', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+
+      const result = await res.json();
+      if (!result.success) throw new Error(result.error);
+
+      fetchHistory();
+    } catch (err) {
+      window.alert(`Gagal menghapus: ${err.message}`);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const handleWeeklyRecap = async () => {
     setRecapLoading(true);
     setRecapError('');
@@ -184,6 +252,7 @@ export default function Home() {
 
   const taskRows = filteredHistory.flatMap(item =>
     (item.tasks || []).map(task => ({
+      id: item.id,
       date: formatDate(item.created_at),
       project_name: item.project_name,
       task,
@@ -197,6 +266,71 @@ export default function Home() {
     acc[item.project_name] = (acc[item.project_name] || 0) + 1;
     return acc;
   }, {});
+
+  const editFormJsx = (
+    <form onSubmit={saveEdit} className="space-y-3">
+      <div>
+        <label className="block text-sm font-medium text-slate-700 mb-1">Nama Proyek</label>
+        <input
+          type="text"
+          value={editForm.project_name}
+          onChange={(e) => setEditForm({ ...editForm, project_name: e.target.value })}
+          className="w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+          required
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-slate-700 mb-1">Tugas (satu per baris)</label>
+        <textarea
+          rows={3}
+          value={editForm.tasks}
+          onChange={(e) => setEditForm({ ...editForm, tasks: e.target.value })}
+          className="w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
+        <select
+          value={editForm.status}
+          onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+          className="w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
+        >
+          {['In Progress', 'Completed', 'Blocked'].map(s => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-slate-700 mb-1">Ringkasan</label>
+        <input
+          type="text"
+          value={editForm.summary}
+          onChange={(e) => setEditForm({ ...editForm, summary: e.target.value })}
+          className="w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+          required
+        />
+      </div>
+
+      {editError && <p className="text-sm text-red-600">{editError}</p>}
+
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          disabled={editLoading}
+          className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
+        >
+          {editLoading ? 'Menyimpan...' : 'Simpan Perubahan'}
+        </button>
+        <button
+          type="button"
+          onClick={cancelEdit}
+          className="px-4 py-2 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 font-medium transition-colors"
+        >
+          Batal
+        </button>
+      </div>
+    </form>
+  );
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900 py-10 px-4 sm:px-6 lg:px-8">
@@ -432,49 +566,111 @@ export default function Home() {
                     <th className="px-4 py-3 font-semibold">Tugas</th>
                     <th className="px-4 py-3 font-semibold">Status</th>
                     <th className="px-4 py-3 font-semibold">Ringkasan</th>
+                    <th className="px-4 py-3 font-semibold">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {taskRows.map((row, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-4 py-3 whitespace-nowrap text-slate-500">{row.date}</td>
-                      <td className="px-4 py-3 font-medium text-indigo-600 whitespace-nowrap">{row.project_name}</td>
-                      <td className="px-4 py-3 text-slate-700">{row.task}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${row.status === 'Completed' ? 'bg-green-100 text-green-800' :
-                          row.status === 'Blocked' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
-                          }`}>
-                          {row.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-slate-500 italic text-xs">"{row.summary}"</td>
-                    </tr>
-                  ))}
+                  {taskRows.map((row, idx) => {
+                    const isEditing = row.id === editingId;
+                    const firstOfId = taskRows.findIndex(r => r.id === row.id) === idx;
+                    return (
+                      <Fragment key={idx}>
+                        {isEditing && firstOfId && (
+                          <tr>
+                            <td colSpan={6} className="px-4 py-3 bg-indigo-50/50">
+                              {editFormJsx}
+                            </td>
+                          </tr>
+                        )}
+                        {!isEditing && (
+                          <tr className="hover:bg-slate-50 transition-colors">
+                            <td className="px-4 py-3 whitespace-nowrap text-slate-500">{row.date}</td>
+                            <td className="px-4 py-3 font-medium text-indigo-600 whitespace-nowrap">{row.project_name}</td>
+                            <td className="px-4 py-3 text-slate-700">{row.task}</td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${row.status === 'Completed' ? 'bg-green-100 text-green-800' :
+                                row.status === 'Blocked' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
+                                }`}>
+                                {row.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-slate-500 italic text-xs">"{row.summary}"</td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <div className="flex gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const editItem = filteredHistory.find(i => i.id === row.id);
+                                    if (editItem) openEdit(editItem);
+                                  }}
+                                  className="px-2 py-1 rounded text-xs font-medium bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition-colors"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDelete(row.id)}
+                                  disabled={deletingId === row.id}
+                                  className="px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors disabled:opacity-50"
+                                >
+                                  {deletingId === row.id ? '...' : 'Hapus'}
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           ) : (
             filteredHistory.map((item, index) => (
-              <div key={index} className="bg-white shadow-sm border border-slate-200 rounded-xl p-6 space-y-3">
-                <div className="flex justify-between items-start">
-                  <h3 className="text-lg font-bold text-indigo-600">{item.project_name}</h3>
-                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${item.status === 'Completed' ? 'bg-green-100 text-green-800' :
-                    item.status === 'Blocked' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
-                    }`}>
-                    {item.status}
-                  </span>
-                </div>
+              <div key={item.id || index} className="bg-white shadow-sm border border-slate-200 rounded-xl p-6 space-y-3">
+                {editingId === item.id ? (
+                  editFormJsx
+                ) : (
+                  <>
+                    <div className="flex justify-between items-start">
+                      <h3 className="text-lg font-bold text-indigo-600">{item.project_name}</h3>
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${item.status === 'Completed' ? 'bg-green-100 text-green-800' :
+                        item.status === 'Blocked' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                        {item.status}
+                      </span>
+                    </div>
 
-                <p className="text-sm text-slate-700 italic">"{item.summary}"</p>
+                    <p className="text-sm text-slate-700 italic">"{item.summary}"</p>
 
-                <div>
-                  <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Detail Tugas:</h4>
-                  <ul className="list-disc list-inside text-sm text-slate-700 space-y-1">
-                    {item.tasks.map((task, idx) => (
-                      <li key={idx}>{task}</li>
-                    ))}
-                  </ul>
-                </div>
+                    <div>
+                      <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Detail Tugas:</h4>
+                      <ul className="list-disc list-inside text-sm text-slate-700 space-y-1">
+                        {item.tasks.map((task, idx) => (
+                          <li key={idx}>{task}</li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div className="flex gap-2 pt-2 border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={() => openEdit(item)}
+                        className="px-3 py-1.5 rounded-lg text-sm font-medium bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition-colors"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(item.id)}
+                        disabled={deletingId === item.id}
+                        className="px-3 py-1.5 rounded-lg text-sm font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors disabled:opacity-50"
+                      >
+                        {deletingId === item.id ? 'Menghapus...' : 'Hapus'}
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             ))
           )}
