@@ -1,6 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getFriendlyGeminiError } from '@/lib/geminiError';
 
 const ai = new GoogleGenAI();
 
@@ -63,6 +64,6 @@ export async function POST() {
     return NextResponse.json({ success: true, summary: response.text.trim(), records });
   } catch (error) {
     console.error('Error generating weekly recap:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: getFriendlyGeminiError(error) }, { status: 500 });
   }
 }

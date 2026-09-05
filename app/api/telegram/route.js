@@ -1,6 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { isQuotaOrTempError } from '@/lib/geminiError';
 
 const ai = new GoogleGenAI();
 const supabase = createClient(
@@ -104,9 +105,7 @@ export async function POST(request) {
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('Telegram Webhook Error:', error);
-        const msg = error.message || '';
-        const isQuotaOrTemp = /quota|RESOURCE_EXHAUSTED|429|UNAVAILABLE|503|high demand|no longer available/i.test(msg);
-        if (isQuotaOrTemp && chatId) {
+        if (isQuotaOrTempError(error) && chatId) {
             try {
                 await sendTelegramMessage(chatId, "⚠️ Sedang terkendala di sisi AI (kuota/antrean server). Mohon coba lagi beberapa menit lagi ya.");
             } catch (err) {
