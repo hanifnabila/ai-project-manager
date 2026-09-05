@@ -21,13 +21,14 @@ async function sendTelegramMessage(chatId, text) {
 }
 
 export async function POST(request) {
+    let chatId = null;
     try {
         const body = await request.json();
         if (!body.message || !body.message.text) {
             return NextResponse.json({ success: true });
         }
 
-        const chatId = body.message.chat.id;
+        chatId = body.message.chat.id;
         const userText = body.message.text.trim();
 
         // 1. Deteksi apakah user ingin melihat laporan/tanya (mengandung kata kunci laporan, rekap, ringkasan, dll)
@@ -97,12 +98,22 @@ export async function POST(request) {
             }
         ]);
 
-        const replyMessage = `✅ *Berhasil Dicatat!*\\n\\n📌 *Proyek:* ${parsedData.project_name}\\n📊 *Status:* ${parsedData.status}\\n📝 *Ringkasan:* ${parsedData.summary}`;
+        const replyMessage = `✅ *Berhasil Dicatat!*\n\n📌 *Proyek:* ${parsedData.project_name}\n📊 *Status:* ${parsedData.status}\n📝 *Ringkasan:* ${parsedData.summary}`;
         await sendTelegramMessage(chatId, replyMessage);
 
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('Telegram Webhook Error:', error);
+        const msg = error.message || '';
+        const isQuotaOrTemp = /quota|RESOURCE_EXHAUSTED|429|UNAVAILABLE|503|high demand|no longer available/i.test(msg);
+        if (isQuotaOrTemp && chatId) {
+            try {
+                await sendTelegramMessage(chatId, "⚠️ Sedang terkendala di sisi AI (kuota/antrean server). Mohon coba lagi beberapa menit lagi ya.");
+            } catch (err) {
+                console.error('Failed to notify user about AI outage:', err);
+            }
+            return NextResponse.json({ success: true });
+        }
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 }
