@@ -13,6 +13,7 @@ export default function Home() {
   const [recap, setRecap] = useState('');
   const [recapLoading, setRecapLoading] = useState(false);
   const [recapError, setRecapError] = useState('');
+  const [view, setView] = useState('cards');
 
   // Ambil data dari Supabase saat halaman pertama kali dibuka
   useEffect(() => {
@@ -128,6 +129,22 @@ export default function Home() {
     return matchesSearch && matchesStatus;
   });
 
+  const formatDate = (iso) => {
+    const date = new Date(iso);
+    return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
+
+  const taskRows = filteredHistory.flatMap(item =>
+    (item.tasks || []).map(task => ({
+      date: formatDate(item.created_at),
+      project_name: item.project_name,
+      task,
+      status: item.status,
+      summary: item.summary,
+      created_at: item.created_at,
+    }))
+  );
+
   const projectCounts = history.reduce((acc, item) => {
     acc[item.project_name] = (acc[item.project_name] || 0) + 1;
     return acc;
@@ -203,21 +220,37 @@ export default function Home() {
 
         {/* Hasil Rekap / Riwayat */}
         <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-bold tracking-tight">Rekap Progress</h2>
-            <button
-              type="button"
-              onClick={handleDownloadMarkdown}
-              disabled={todayHistory.length === 0}
-              title={todayHistory.length === 0 ? 'Belum ada catatan hari ini' : 'Unduh riwayat hari ini sebagai file .md'}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                todayHistory.length === 0
-                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                  : 'bg-indigo-600 text-white hover:bg-indigo-700'
-              }`}
-            >
-              Download Markdown
-            </button>
+          <div className="flex justify-between items-center flex-wrap gap-2">
+            <h2 className="text-xl font-bold tracking-tight">Dashboard / Tabel Progress</h2>
+            <div className="flex items-center gap-2">
+              <div className="flex rounded-lg border border-slate-300 overflow-hidden">
+                {['cards', 'table'].map(v => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setView(v)}
+                    className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                      view === v ? 'bg-indigo-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    {v === 'cards' ? 'Kartu' : 'Tabel'}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={handleDownloadMarkdown}
+                disabled={todayHistory.length === 0}
+                title={todayHistory.length === 0 ? 'Belum ada catatan hari ini' : 'Unduh riwayat hari ini sebagai file .md'}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  todayHistory.length === 0
+                    ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                    : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                }`}
+              >
+                Download Markdown
+              </button>
+            </div>
           </div>
 
           {/* Filter & Pencarian */}
@@ -251,6 +284,37 @@ export default function Home() {
               {history.length === 0
                 ? 'Belum ada catatan hari ini. Mulai ketik di atas!'
                 : 'Tidak ada hasil yang cocok dengan filter.'}
+            </div>
+          ) : view === 'table' ? (
+            <div className="bg-white shadow-sm border border-slate-200 rounded-xl overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500 border-b border-slate-200">
+                  <tr>
+                    <th className="px-4 py-3 font-semibold">Tanggal</th>
+                    <th className="px-4 py-3 font-semibold">Proyek</th>
+                    <th className="px-4 py-3 font-semibold">Tugas</th>
+                    <th className="px-4 py-3 font-semibold">Status</th>
+                    <th className="px-4 py-3 font-semibold">Ringkasan</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {taskRows.map((row, idx) => (
+                    <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-4 py-3 whitespace-nowrap text-slate-500">{row.date}</td>
+                      <td className="px-4 py-3 font-medium text-indigo-600 whitespace-nowrap">{row.project_name}</td>
+                      <td className="px-4 py-3 text-slate-700">{row.task}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${row.status === 'Completed' ? 'bg-green-100 text-green-800' :
+                          row.status === 'Blocked' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                          {row.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-slate-500 italic text-xs">"{row.summary}"</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           ) : (
             filteredHistory.map((item, index) => (
