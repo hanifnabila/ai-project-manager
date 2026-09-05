@@ -14,6 +14,15 @@ export default function Home() {
   const [recapLoading, setRecapLoading] = useState(false);
   const [recapError, setRecapError] = useState('');
   const [view, setView] = useState('cards');
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualForm, setManualForm] = useState({
+    project_name: '',
+    tasks: '',
+    status: 'In Progress',
+    summary: '',
+  });
+  const [manualError, setManualError] = useState('');
+  const [manualLoading, setManualLoading] = useState(false);
 
   // Ambil data dari Supabase saat halaman pertama kali dibuka
   useEffect(() => {
@@ -53,7 +62,13 @@ export default function Home() {
       });
 
       const result = await res.json();
-      if (!result.success) throw new Error(result.error);
+      if (!result.success) {
+        // Jika AI gagal (kuota habis / layanan tidak tersedia), tawarkan input manual
+        if (['QUOTA', 'UNAVAILABLE', 'MODEL'].includes(result.code)) {
+          setManualOpen(true);
+        }
+        throw new Error(result.error);
+      }
 
       setRawText('');
       fetchHistory(); // Refresh daftar riwayat dari database
@@ -61,6 +76,39 @@ export default function Home() {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleManualSubmit = async (e) => {
+    e.preventDefault();
+    const payload = {
+      project_name: manualForm.project_name,
+      status: manualForm.status,
+      summary: manualForm.summary,
+      tasks: manualForm.tasks,
+    };
+
+    setManualLoading(true);
+    setManualError('');
+
+    try {
+      const res = await fetch('/api/manual-progress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await res.json();
+      if (!result.success) throw new Error(result.error);
+
+      setManualOpen(false);
+      setManualForm({ project_name: '', tasks: '', status: 'In Progress', summary: '' });
+      setError('');
+      fetchHistory();
+    } catch (err) {
+      setManualError(err.message);
+    } finally {
+      setManualLoading(false);
     }
   };
 
@@ -189,8 +237,97 @@ export default function Home() {
             >
               {loading ? 'AI Sedang Menganalisis...' : 'Catat & Analisis dengan AI'}
             </button>
+
+            <button
+              type="button"
+              onClick={() => setManualOpen(v => !v)}
+              className="w-full text-sm text-slate-500 hover:text-indigo-600"
+            >
+              {manualOpen ? '− Sembunyikan Form Input Manual' : '＋ Atau input manual (tanpa AI)'}
+            </button>
           </form>
         </div>
+
+        {/* Form Input Manual (fallback saat AI error / kuota habis) */}
+        {manualOpen && (
+          <div className="bg-amber-50 shadow-sm border border-amber-300 rounded-xl p-6">
+            <h2 className="text-lg font-bold tracking-tight text-amber-900">Input Progress Manual</h2>
+            <p className="mt-1 text-sm text-amber-800">
+              Input langsung sesuai kolom tabel (Proyek, Tugas, Status, Ringkasan) tanpa AI.
+            </p>
+            <form onSubmit={handleManualSubmit} className="mt-4 space-y-4">
+              <div>
+                <label htmlFor="manualProject" className="block text-sm font-medium text-amber-900 mb-1">
+                  Nama Proyek
+                </label>
+                <input
+                  id="manualProject"
+                  type="text"
+                  value={manualForm.project_name}
+                  onChange={(e) => setManualForm({ ...manualForm, project_name: e.target.value })}
+                  placeholder="Contoh: Sistem Absensi"
+                  className="w-full rounded-lg border border-amber-300 p-3 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                  required
+                />
+              </div>
+
+              <div>
+                <label htmlFor="manualTasks" className="block text-sm font-medium text-amber-900 mb-1">
+                  Tugas (satu per baris)
+                </label>
+                <textarea
+                  id="manualTasks"
+                  rows={3}
+                  value={manualForm.tasks}
+                  onChange={(e) => setManualForm({ ...manualForm, tasks: e.target.value })}
+                  placeholder={'Migrasi tabel database siswa\nDebugging API login'}
+                  className="w-full rounded-lg border border-amber-300 p-3 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="manualStatus" className="block text-sm font-medium text-amber-900 mb-1">
+                  Status
+                </label>
+                <select
+                  id="manualStatus"
+                  value={manualForm.status}
+                  onChange={(e) => setManualForm({ ...manualForm, status: e.target.value })}
+                  className="w-full rounded-lg border border-amber-300 p-3 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white"
+                >
+                  {['In Progress', 'Completed', 'Blocked'].map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="manualSummary" className="block text-sm font-medium text-amber-900 mb-1">
+                  Ringkasan
+                </label>
+                <input
+                  id="manualSummary"
+                  type="text"
+                  value={manualForm.summary}
+                  onChange={(e) => setManualForm({ ...manualForm, summary: e.target.value })}
+                  placeholder="Contoh: Selesai migrasi database siswa"
+                  className="w-full rounded-lg border border-amber-300 p-3 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                  required
+                />
+              </div>
+
+              {manualError && <p className="text-sm text-red-600">{manualError}</p>}
+
+              <button
+                type="submit"
+                disabled={manualLoading}
+                className="w-full bg-amber-600 hover:bg-amber-700 text-white font-medium py-2.5 px-4 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {manualLoading ? 'Menyimpan...' : 'Simpan Progress Manual'}
+              </button>
+            </form>
+          </div>
+        )}
 
         {/* Ringkasan Mingguan */}
         <div className="bg-white shadow-sm border border-indigo-200 rounded-xl p-6">

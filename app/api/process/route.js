@@ -1,7 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getFriendlyGeminiError } from '@/lib/geminiError';
+import { getFriendlyGeminiError, getGeminiErrorCode } from '@/lib/geminiError';
 
 const ai = new GoogleGenAI();
 
@@ -61,6 +61,6 @@ export async function POST(request) {
     return NextResponse.json({ success: true, data: parsedData });
   } catch (error) {
     console.error('Error processing note:', error);
-    return NextResponse.json({ success: false, error: getFriendlyGeminiError(error) }, { status: 500 });
+    return NextResponse.json({ success: false, error: getFriendlyGeminiError(error), code: getGeminiErrorCode(error) }, { status: 500 });
   }
 }
