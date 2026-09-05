@@ -10,6 +10,9 @@ export default function Home() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [recap, setRecap] = useState('');
+  const [recapLoading, setRecapLoading] = useState(false);
+  const [recapError, setRecapError] = useState('');
 
   // Ambil data dari Supabase saat halaman pertama kali dibuka
   useEffect(() => {
@@ -60,6 +63,27 @@ export default function Home() {
     }
   };
 
+  const handleWeeklyRecap = async () => {
+    setRecapLoading(true);
+    setRecapError('');
+    setRecap('');
+
+    try {
+      const res = await fetch('/api/weekly-recap', {
+        method: 'POST',
+      });
+
+      const result = await res.json();
+      if (!result.success) throw new Error(result.error);
+
+      setRecap(result.summary);
+    } catch (err) {
+      setRecapError(err.message);
+    } finally {
+      setRecapLoading(false);
+    }
+  };
+
   const filteredHistory = history.filter(item => {
     const matchesSearch = item.project_name?.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === 'All' || item.status === statusFilter;
@@ -70,8 +94,6 @@ export default function Home() {
     acc[item.project_name] = (acc[item.project_name] || 0) + 1;
     return acc;
   }, {});
-
-  // ... (lanjutan return UI HTML seperti sebelumnya)
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900 py-10 px-4 sm:px-6 lg:px-8">
@@ -113,6 +135,32 @@ export default function Home() {
               {loading ? 'AI Sedang Menganalisis...' : 'Catat & Analisis dengan AI'}
             </button>
           </form>
+        </div>
+
+        {/* Ringkasan Mingguan */}
+        <div className="bg-white shadow-sm border border-indigo-200 rounded-xl p-6">
+          <h2 className="text-xl font-bold tracking-tight">Ringkasan Mingguan</h2>
+          <p className="mt-1 text-sm text-slate-600">
+            AI akan merangkum seluruh progress, pencapaian, kendala, dan rencana minggu depan dari data 7 hari terakhir.
+          </p>
+          <button
+            type="button"
+            onClick={handleWeeklyRecap}
+            disabled={recapLoading}
+            className="mt-4 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 px-4 rounded-lg transition-colors disabled:opacity-50"
+          >
+            {recapLoading ? 'AI Sedang Menyusun Ringkasan...' : 'Buat Ringkasan Mingguan'}
+          </button>
+
+          {recapError && <p className="mt-3 text-sm text-red-600">{recapError}</p>}
+
+          {recap && (
+            <div className="mt-5 rounded-lg bg-slate-50 border border-slate-200 p-5">
+              <div className="prose prose-sm max-w-none whitespace-pre-line text-sm text-slate-800">
+                {recap}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Hasil Rekap / Riwayat */}
