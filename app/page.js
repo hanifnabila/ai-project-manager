@@ -84,6 +84,44 @@ export default function Home() {
     }
   };
 
+  const todayHistory = history.filter(item => {
+    const date = new Date(item.created_at);
+    const today = new Date();
+    return (
+      date.getFullYear() === today.getFullYear() &&
+      date.getMonth() === today.getMonth() &&
+      date.getDate() === today.getDate()
+    );
+  });
+
+  const handleDownloadMarkdown = () => {
+    if (todayHistory.length === 0) return;
+
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const lines = [
+      `# Progress Harian - ${new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`,
+      '',
+    ];
+
+    todayHistory.forEach(item => {
+      lines.push(`## ${item.project_name} (${item.status})`, '');
+      lines.push(`**Ringkasan:** "${item.summary}"`, '');
+      lines.push('', '**Tugas:**');
+      item.tasks.forEach(task => lines.push(`- ${task}`));
+      lines.push('', '---', '');
+    });
+
+    const blob = new Blob([lines.join('\n')], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `progress-harian-${dateStr}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const filteredHistory = history.filter(item => {
     const matchesSearch = item.project_name?.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === 'All' || item.status === statusFilter;
@@ -165,7 +203,22 @@ export default function Home() {
 
         {/* Hasil Rekap / Riwayat */}
         <div className="space-y-4">
-          <h2 className="text-xl font-bold tracking-tight">Rekap Progress</h2>
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-bold tracking-tight">Rekap Progress</h2>
+            <button
+              type="button"
+              onClick={handleDownloadMarkdown}
+              disabled={todayHistory.length === 0}
+              title={todayHistory.length === 0 ? 'Belum ada catatan hari ini' : 'Unduh riwayat hari ini sebagai file .md'}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                todayHistory.length === 0
+                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                  : 'bg-indigo-600 text-white hover:bg-indigo-700'
+              }`}
+            >
+              Download Markdown
+            </button>
+          </div>
 
           {/* Filter & Pencarian */}
           <div className="bg-white shadow-sm border border-slate-200 rounded-xl p-4 space-y-3">
