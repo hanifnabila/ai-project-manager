@@ -23,6 +23,12 @@ export async function POST(request) {
     }
     if (!Array.isArray(tasks)) tasks = [];
 
+    let tags = body.tags;
+    if (typeof tags === 'string') {
+      tags = tags.split(/,|;/).map(t => t.trim()).filter(Boolean);
+    }
+    if (!Array.isArray(tags)) tags = [];
+
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -36,6 +42,7 @@ export async function POST(request) {
           status,
           summary: summary.trim(),
           tasks,
+          tags,
           raw_text: body.raw_text?.trim() || '',
         }
       ])

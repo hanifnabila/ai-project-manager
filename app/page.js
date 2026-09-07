@@ -9,22 +9,28 @@ export default function Home() {
   const [history, setHistory] = useState([]);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState([]);
+  const [tagFilter, setTagFilter] = useState([]);
   const [recap, setRecap] = useState('');
   const [recapLoading, setRecapLoading] = useState(false);
   const [recapError, setRecapError] = useState('');
   const [view, setView] = useState('cards');
+  const [sortKey, setSortKey] = useState('created_at');
+  const [sortDir, setSortDir] = useState('desc');
+  const [page, setPage] = useState(1);
+  const pageSize = 6;
   const [manualOpen, setManualOpen] = useState(false);
   const [manualForm, setManualForm] = useState({
     project_name: '',
     tasks: '',
     status: 'In Progress',
     summary: '',
+    tags: '',
   });
   const [manualError, setManualError] = useState('');
   const [manualLoading, setManualLoading] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [editForm, setEditForm] = useState({ project_name: '', tasks: '', status: 'In Progress', summary: '' });
+  const [editForm, setEditForm] = useState({ project_name: '', tasks: '', status: 'In Progress', summary: '', tags: '' });
   const [editError, setEditError] = useState('');
   const [editLoading, setEditLoading] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
@@ -33,6 +39,19 @@ export default function Home() {
   useEffect(() => {
     fetchHistory();
   }, []);
+
+  // Reset halaman ke 1 saat filter / pencarian / urutan berubah
+  useEffect(() => {
+    setPage(1);
+  }, [search, statusFilter, tagFilter, sortKey, sortDir]);
+
+  const parseTags = (value) => {
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string') {
+      return value.split(/,|;/).map(t => t.trim()).filter(Boolean);
+    }
+    return [];
+  };
 
   const fetchHistory = async () => {
     if (!supabase) return;
@@ -43,10 +62,21 @@ export default function Home() {
       .order('created_at', { ascending: false });
 
     if (!error && data) {
-      // Format ulang data tasks dari string JSON kembali ke array
+      // Format ulang data tasks & tags dari string JSON kembali ke array
+      const safeParse = (value, fallback) => {
+        if (Array.isArray(value)) return value;
+        if (typeof value !== 'string') return fallback;
+        try {
+          const parsed = JSON.parse(value);
+          return Array.isArray(parsed) ? parsed : fallback;
+        } catch {
+          return fallback;
+        }
+      };
       const formattedData = data.map(item => ({
         ...item,
-        tasks: typeof item.tasks === 'string' ? JSON.parse(item.tasks) : item.tasks
+        tasks: safeParse(item.tasks, []),
+        tags: safeParse(item.tags, []),
       }));
       setHistory(formattedData);
     }
@@ -91,6 +121,7 @@ export default function Home() {
       status: manualForm.status,
       summary: manualForm.summary,
       tasks: manualForm.tasks,
+      tags: parseTags(manualForm.tags),
     };
 
     setManualLoading(true);
@@ -107,7 +138,7 @@ export default function Home() {
       if (!result.success) throw new Error(result.error);
 
       setManualOpen(false);
-      setManualForm({ project_name: '', tasks: '', status: 'In Progress', summary: '' });
+      setManualForm({ project_name: '', tasks: '', status: 'In Progress', summary: '', tags: '' });
       setError('');
       fetchHistory();
     } catch (err) {
@@ -124,13 +155,14 @@ export default function Home() {
       tasks: (item.tasks || []).join('\n'),
       status: item.status || 'In Progress',
       summary: item.summary || '',
+      tags: (item.tags || []).join(', '),
     });
     setEditError('');
   };
 
   const cancelEdit = () => {
     setEditingId(null);
-    setEditForm({ project_name: '', tasks: '', status: 'In Progress', summary: '' });
+    setEditForm({ project_name: '', tasks: '', status: 'In Progress', summary: '', tags: '' });
     setEditError('');
   };
 
@@ -143,7 +175,7 @@ export default function Home() {
       const res = await fetch('/api/progress', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: editingId, ...editForm }),
+        body: JSON.stringify({ id: editingId, ...editForm, tags: parseTags(editForm.tags) }),
       });
 
       const result = await res.json();
@@ -223,6 +255,9 @@ export default function Home() {
     todayHistory.forEach(item => {
       lines.push(`## ${item.project_name} (${item.status})`, '');
       lines.push(`**Ringkasan:** "${item.summary}"`, '');
+      if (item.tags && item.tags.length > 0) {
+        lines.push('', `**Tag:** ${item.tags.join(', ')}`);
+      }
       lines.push('', '**Tugas:**');
       item.tasks.forEach(task => lines.push(`- ${task}`));
       lines.push('', '---', '');
@@ -239,10 +274,36 @@ export default function Home() {
     URL.revokeObjectURL(url);
   };
 
+  const allTags = [...new Set(
+    history.flatMap(item => item.tags || []).filter(Boolean).map(t => t.toLowerCase())
+  )].sort();
+
   const filteredHistory = history.filter(item => {
     const matchesSearch = item.project_name?.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = statusFilter === 'All' || item.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesStatus = statusFilter.length === 0 || statusFilter.includes(item.status);
+    const matchesTags = tagFilter.length === 0 || (item.tags || []).some(tag => tagFilter.includes(tag.toLowerCase()));
+    return matchesSearch && matchesStatus && matchesTags;
+  });
+
+  const statusOrder = { 'In Progress': 1, 'Completed': 2, 'Blocked': 3 };
+
+  const sortedHistory = [...filteredHistory].sort((a, b) => {
+    let valA, valB;
+    if (sortKey === 'created_at') {
+      valA = new Date(a.created_at).getTime();
+      valB = new Date(b.created_at).getTime();
+    } else if (sortKey === 'project_name') {
+      valA = (a.project_name || '').toLowerCase();
+      valB = (b.project_name || '').toLowerCase();
+    } else if (sortKey === 'status') {
+      valA = statusOrder[a.status] || 99;
+      valB = statusOrder[b.status] || 99;
+    }
+    let cmp;
+    if (valA < valB) cmp = -1;
+    else if (valA > valB) cmp = 1;
+    else cmp = 0;
+    return sortDir === 'asc' ? cmp : -cmp;
   });
 
   const formatDate = (iso) => {
@@ -250,7 +311,11 @@ export default function Home() {
     return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
-  const taskRows = filteredHistory.flatMap(item =>
+  const totalPages = Math.max(1, Math.ceil(sortedHistory.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const paginatedHistory = sortedHistory.slice((safePage - 1) * pageSize, safePage * pageSize);
+
+  const taskRows = paginatedHistory.flatMap(item =>
     (item.tasks || []).map(task => ({
       id: item.id,
       date: formatDate(item.created_at),
@@ -258,6 +323,7 @@ export default function Home() {
       task,
       status: item.status,
       summary: item.summary,
+      tags: item.tags || [],
       created_at: item.created_at,
     }))
   );
@@ -308,6 +374,16 @@ export default function Home() {
           onChange={(e) => setEditForm({ ...editForm, summary: e.target.value })}
           className="w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
           required
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-slate-700 mb-1">Tag / Label (pisahkan dengan koma)</label>
+        <input
+          type="text"
+          value={editForm.tags}
+          onChange={(e) => setEditForm({ ...editForm, tags: e.target.value })}
+          placeholder="Contoh: Backend, Sistem Absensi, PT Klien"
+          className="w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
         />
       </div>
 
@@ -450,6 +526,20 @@ export default function Home() {
                 />
               </div>
 
+              <div>
+                <label htmlFor="manualTags" className="block text-sm font-medium text-amber-900 mb-1">
+                  Tag / Label (pisahkan dengan koma)
+                </label>
+                <input
+                  id="manualTags"
+                  type="text"
+                  value={manualForm.tags}
+                  onChange={(e) => setManualForm({ ...manualForm, tags: e.target.value })}
+                  placeholder="Contoh: Backend, Sistem Absensi, PT Klien"
+                  className="w-full rounded-lg border border-amber-300 p-3 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                />
+              </div>
+
               {manualError && <p className="text-sm text-red-600">{manualError}</p>}
 
               <button
@@ -533,20 +623,89 @@ export default function Home() {
               placeholder="Cari nama proyek..."
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
             />
-            <div className="flex gap-2">
-              {['All', 'In Progress', 'Completed', 'Blocked'].map(status => (
-                <button
-                  key={status}
-                  onClick={() => setStatusFilter(status)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                    statusFilter === status
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                  }`}
-                >
-                  {status}
-                </button>
-              ))}
+            <div className="flex flex-wrap gap-2">
+              {['All', 'In Progress', 'Completed', 'Blocked'].map(status => {
+                const active = status === 'All'
+                  ? statusFilter.length === 0
+                  : statusFilter.includes(status);
+                const handleClick = () => {
+                  if (status === 'All') {
+                    setStatusFilter([]);
+                  } else {
+                    setStatusFilter(prev =>
+                      prev.includes(status) ? prev.filter(s => s !== status) : [...prev, status]
+                    );
+                  }
+                };
+                return (
+                  <button
+                    key={status}
+                    onClick={handleClick}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                      active
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    {status}
+                  </button>
+                );
+              })}
+            </div>
+            {allTags.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Tag / Label:</p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setTagFilter([])}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                      tagFilter.length === 0
+                        ? 'bg-violet-600 text-white'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    Semua
+                  </button>
+                  {allTags.map(tag => {
+                    const active = tagFilter.includes(tag);
+                    return (
+                      <button
+                        key={tag}
+                        onClick={() => setTagFilter(prev =>
+                          prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+                        )}
+                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                          active
+                            ? 'bg-violet-600 text-white'
+                            : 'bg-violet-50 text-violet-700 hover:bg-violet-100'
+                        }`}
+                      >
+                        {tag}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <span className="text-sm text-slate-500">Urutkan:</span>
+              <select
+                value={sortKey}
+                onChange={(e) => setSortKey(e.target.value)}
+                className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
+              >
+                <option value="created_at">Tanggal</option>
+                <option value="project_name">Proyek</option>
+                <option value="status">Status</option>
+              </select>
+              <button
+                type="button"
+                onClick={() => setSortDir(d => (d === 'asc' ? 'desc' : 'asc'))}
+                title={sortDir === 'asc' ? 'Urutan menaik' : 'Urutan menurun'}
+                className="px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors flex items-center gap-1"
+              >
+                {sortDir === 'asc' ? '▲ Naik' : '▼ Turun'}
+              </button>
             </div>
           </div>
 
@@ -565,6 +724,7 @@ export default function Home() {
                     <th className="px-4 py-3 font-semibold">Proyek</th>
                     <th className="px-4 py-3 font-semibold">Tugas</th>
                     <th className="px-4 py-3 font-semibold">Status</th>
+                    <th className="px-4 py-3 font-semibold">Tag</th>
                     <th className="px-4 py-3 font-semibold">Ringkasan</th>
                     <th className="px-4 py-3 font-semibold">Aksi</th>
                   </tr>
@@ -577,7 +737,7 @@ export default function Home() {
                       <Fragment key={idx}>
                         {isEditing && firstOfId && (
                           <tr>
-                            <td colSpan={6} className="px-4 py-3 bg-indigo-50/50">
+                            <td colSpan={7} className="px-4 py-3 bg-indigo-50/50">
                               {editFormJsx}
                             </td>
                           </tr>
@@ -593,6 +753,15 @@ export default function Home() {
                                 }`}>
                                 {row.status}
                               </span>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <div className="flex flex-wrap gap-1">
+                                {(row.tags || []).map(tag => (
+                                  <span key={tag} className="px-2 py-0.5 rounded-full text-xs font-medium bg-violet-100 text-violet-700">
+                                    {tag}
+                                  </span>
+                                ))}
+                              </div>
                             </td>
                             <td className="px-4 py-3 text-slate-500 italic text-xs">"{row.summary}"</td>
                             <td className="px-4 py-3 whitespace-nowrap">
@@ -626,7 +795,7 @@ export default function Home() {
               </table>
             </div>
           ) : (
-            filteredHistory.map((item, index) => (
+            paginatedHistory.map((item, index) => (
               <div key={item.id || index} className="bg-white shadow-sm border border-slate-200 rounded-xl p-6 space-y-3">
                 {editingId === item.id ? (
                   editFormJsx
@@ -642,6 +811,16 @@ export default function Home() {
                     </div>
 
                     <p className="text-sm text-slate-700 italic">"{item.summary}"</p>
+
+                    {(item.tags && item.tags.length > 0) && (
+                      <div className="flex flex-wrap gap-1">
+                        {item.tags.map(tag => (
+                          <span key={tag} className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-violet-100 text-violet-700">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
 
                     <div>
                       <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Detail Tugas:</h4>
@@ -673,6 +852,48 @@ export default function Home() {
                 )}
               </div>
             ))
+          )}
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <p className="text-sm text-slate-500">
+                Menampilkan {((safePage - 1) * pageSize) + 1}–{Math.min(safePage * pageSize, sortedHistory.length)} dari {sortedHistory.length} catatan
+              </p>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setPage(safePage - 1)}
+                  disabled={safePage <= 1}
+                  className="px-3 py-1.5 rounded-lg text-sm font-medium bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  ‹ Sebelumnya
+                </button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setPage(p)}
+                      className={`w-9 h-9 rounded-lg text-sm font-medium transition-colors ${
+                        p === safePage
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPage(safePage + 1)}
+                  disabled={safePage >= totalPages}
+                  className="px-3 py-1.5 rounded-lg text-sm font-medium bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Berikutnya ›
+                </button>
+              </div>
+            </div>
           )}
         </div>
 

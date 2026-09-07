@@ -76,6 +76,7 @@ export async function POST(request) {
     - tasks (array of strings)
     - status ("In Progress" | "Completed" | "Blocked")
     - summary (string)
+    - tags (array of strings: 1-3 tag/kategori/label singkat, misalnya klien atau jenis pekerjaan)
 
     Catatan: "${userText}"
     `;
@@ -95,6 +96,7 @@ export async function POST(request) {
                 status: parsedData.status,
                 summary: parsedData.summary,
                 tasks: JSON.stringify(parsedData.tasks),
+                tags: JSON.stringify(Array.isArray(parsedData.tags) ? parsedData.tags : []),
                 raw_text: userText,
             }
         ]);

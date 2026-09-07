@@ -46,6 +46,14 @@ export async function PATCH(request) {
       updates.tasks = Array.isArray(tasks) ? tasks : [];
     }
 
+    if (body.tags !== undefined) {
+      let tags = body.tags;
+      if (typeof tags === 'string') {
+        tags = tags.split(/,|;/).map(t => t.trim()).filter(Boolean);
+      }
+      updates.tags = Array.isArray(tags) ? tags : [];
+    }
+
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ success: false, error: 'Tidak ada field yang diubah' }, { status: 400 });
     }
