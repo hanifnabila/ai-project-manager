@@ -77,6 +77,7 @@ export async function POST(request) {
     - status ("In Progress" | "Completed" | "Blocked")
     - summary (string)
     - tags (array of strings: 1-3 tag/kategori/label singkat, misalnya klien atau jenis pekerjaan)
+    - priority (string: salah satu dari "Rendah" | "Sedang" | "Tinggi" | "Kritis", nilai prioritas pekerjaan ini)
 
     Catatan: "${userText}"
     `;
@@ -97,11 +98,12 @@ export async function POST(request) {
                 summary: parsedData.summary,
                 tasks: JSON.stringify(parsedData.tasks),
                 tags: JSON.stringify(Array.isArray(parsedData.tags) ? parsedData.tags : []),
+                priority: (parsedData.priority || 'sedang').toLowerCase(),
                 raw_text: userText,
             }
         ]);
 
-        const replyMessage = `✅ *Berhasil Dicatat!*\n\n📌 *Proyek:* ${parsedData.project_name}\n📊 *Status:* ${parsedData.status}\n📝 *Ringkasan:* ${parsedData.summary}`;
+        const replyMessage = `✅ *Berhasil Dicatat!*\n\n📌 *Proyek:* ${parsedData.project_name}\n📊 *Status:* ${parsedData.status}\n⚡ *Prioritas:* ${parsedData.priority || 'Sedang'}\n📝 *Ringkasan:* ${parsedData.summary}`;
         await sendTelegramMessage(chatId, replyMessage);
 
         return NextResponse.json({ success: true });

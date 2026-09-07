@@ -11,6 +11,7 @@ export default function Home() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState([]);
   const [tagFilter, setTagFilter] = useState([]);
+  const [priorityFilter, setPriorityFilter] = useState([]);
   const [recap, setRecap] = useState('');
   const [recapLoading, setRecapLoading] = useState(false);
   const [recapError, setRecapError] = useState('');
@@ -24,16 +25,24 @@ export default function Home() {
     project_name: '',
     tasks: '',
     status: 'In Progress',
+    priority: 'sedang',
     summary: '',
     tags: '',
   });
   const [manualError, setManualError] = useState('');
   const [manualLoading, setManualLoading] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [editForm, setEditForm] = useState({ project_name: '', tasks: '', status: 'In Progress', summary: '', tags: '' });
+  const [editForm, setEditForm] = useState({ project_name: '', tasks: '', status: 'In Progress', priority: 'sedang', summary: '', tags: '' });
   const [editError, setEditError] = useState('');
   const [editLoading, setEditLoading] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+
+  const PRIORITY_OPTIONS = [
+    { value: 'rendah', label: 'Rendah' },
+    { value: 'sedang', label: 'Sedang' },
+    { value: 'tinggi', label: 'Tinggi' },
+    { value: 'kritis', label: 'Kritis' },
+  ];
 
   // Ambil data dari Supabase saat halaman pertama kali dibuka
   useEffect(() => {
@@ -43,7 +52,7 @@ export default function Home() {
   // Reset halaman ke 1 saat filter / pencarian / urutan berubah
   useEffect(() => {
     setPage(1);
-  }, [search, statusFilter, tagFilter, sortKey, sortDir]);
+  }, [search, statusFilter, tagFilter, priorityFilter, sortKey, sortDir]);
 
   const parseTags = (value) => {
     if (Array.isArray(value)) return value;
@@ -119,6 +128,7 @@ export default function Home() {
     const payload = {
       project_name: manualForm.project_name,
       status: manualForm.status,
+      priority: manualForm.priority,
       summary: manualForm.summary,
       tasks: manualForm.tasks,
       tags: parseTags(manualForm.tags),
@@ -138,7 +148,7 @@ export default function Home() {
       if (!result.success) throw new Error(result.error);
 
       setManualOpen(false);
-      setManualForm({ project_name: '', tasks: '', status: 'In Progress', summary: '', tags: '' });
+      setManualForm({ project_name: '', tasks: '', status: 'In Progress', priority: 'sedang', summary: '', tags: '' });
       setError('');
       fetchHistory();
     } catch (err) {
@@ -154,6 +164,7 @@ export default function Home() {
       project_name: item.project_name || '',
       tasks: (item.tasks || []).join('\n'),
       status: item.status || 'In Progress',
+      priority: (item.priority || 'sedang').toLowerCase(),
       summary: item.summary || '',
       tags: (item.tags || []).join(', '),
     });
@@ -162,7 +173,7 @@ export default function Home() {
 
   const cancelEdit = () => {
     setEditingId(null);
-    setEditForm({ project_name: '', tasks: '', status: 'In Progress', summary: '', tags: '' });
+    setEditForm({ project_name: '', tasks: '', status: 'In Progress', priority: 'sedang', summary: '', tags: '' });
     setEditError('');
   };
 
@@ -253,7 +264,8 @@ export default function Home() {
     ];
 
     todayHistory.forEach(item => {
-      lines.push(`## ${item.project_name} (${item.status})`, '');
+      const priorityLabel = (item.priority || 'sedang').toLowerCase();
+      lines.push(`## ${item.project_name} (${item.status}) [Prioritas: ${priorityLabels[priorityLabel] || 'Sedang'}]`, '');
       lines.push(`**Ringkasan:** "${item.summary}"`, '');
       if (item.tags && item.tags.length > 0) {
         lines.push('', `**Tag:** ${item.tags.join(', ')}`);
@@ -278,14 +290,19 @@ export default function Home() {
     history.flatMap(item => item.tags || []).filter(Boolean).map(t => t.toLowerCase())
   )].sort();
 
+  const priorityLabels = { kritis: 'Kritis', tinggi: 'Tinggi', sedang: 'Sedang', rendah: 'Rendah' };
+
   const filteredHistory = history.filter(item => {
     const matchesSearch = item.project_name?.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter.length === 0 || statusFilter.includes(item.status);
     const matchesTags = tagFilter.length === 0 || (item.tags || []).some(tag => tagFilter.includes(tag.toLowerCase()));
-    return matchesSearch && matchesStatus && matchesTags;
+    const itemPriority = (item.priority || 'sedang').toLowerCase();
+    const matchesPriority = priorityFilter.length === 0 || priorityFilter.includes(itemPriority);
+    return matchesSearch && matchesStatus && matchesTags && matchesPriority;
   });
 
   const statusOrder = { 'In Progress': 1, 'Completed': 2, 'Blocked': 3 };
+  const priorityOrder = { kritis: 1, tinggi: 2, sedang: 3, rendah: 4 };
 
   const sortedHistory = [...filteredHistory].sort((a, b) => {
     let valA, valB;
@@ -298,6 +315,9 @@ export default function Home() {
     } else if (sortKey === 'status') {
       valA = statusOrder[a.status] || 99;
       valB = statusOrder[b.status] || 99;
+    } else if (sortKey === 'priority') {
+      valA = priorityOrder[(a.priority || 'sedang').toLowerCase()] || 99;
+      valB = priorityOrder[(b.priority || 'sedang').toLowerCase()] || 99;
     }
     let cmp;
     if (valA < valB) cmp = -1;
@@ -322,6 +342,7 @@ export default function Home() {
       project_name: item.project_name,
       task,
       status: item.status,
+      priority: (item.priority || 'sedang').toLowerCase(),
       summary: item.summary,
       tags: item.tags || [],
       created_at: item.created_at,
@@ -363,6 +384,18 @@ export default function Home() {
         >
           {['In Progress', 'Completed', 'Blocked'].map(s => (
             <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-slate-700 mb-1">Prioritas</label>
+        <select
+          value={editForm.priority}
+          onChange={(e) => setEditForm({ ...editForm, priority: e.target.value })}
+          className="w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
+        >
+          {PRIORITY_OPTIONS.map(o => (
+            <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </select>
       </div>
@@ -507,6 +540,22 @@ export default function Home() {
                 >
                   {['In Progress', 'Completed', 'Blocked'].map(s => (
                     <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="manualPriority" className="block text-sm font-medium text-amber-900 mb-1">
+                  Prioritas
+                </label>
+                <select
+                  id="manualPriority"
+                  value={manualForm.priority}
+                  onChange={(e) => setManualForm({ ...manualForm, priority: e.target.value })}
+                  className="w-full rounded-lg border border-amber-300 p-3 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white"
+                >
+                  {PRIORITY_OPTIONS.map(o => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
                   ))}
                 </select>
               </div>
@@ -697,6 +746,7 @@ export default function Home() {
                 <option value="created_at">Tanggal</option>
                 <option value="project_name">Proyek</option>
                 <option value="status">Status</option>
+                <option value="priority">Prioritas</option>
               </select>
               <button
                 type="button"
@@ -706,6 +756,39 @@ export default function Home() {
               >
                 {sortDir === 'asc' ? '▲ Naik' : '▼ Turun'}
               </button>
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Prioritas:</p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => setPriorityFilter([])}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                    priorityFilter.length === 0
+                      ? 'bg-orange-600 text-white'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  Semua
+                </button>
+                {PRIORITY_OPTIONS.map(o => {
+                  const active = priorityFilter.includes(o.value);
+                  return (
+                    <button
+                      key={o.value}
+                      onClick={() => setPriorityFilter(prev =>
+                        prev.includes(o.value) ? prev.filter(v => v !== o.value) : [...prev, o.value]
+                      )}
+                      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                        active
+                          ? 'bg-orange-600 text-white'
+                          : 'bg-orange-50 text-orange-700 hover:bg-orange-100'
+                      }`}
+                    >
+                      {o.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
@@ -724,6 +807,7 @@ export default function Home() {
                     <th className="px-4 py-3 font-semibold">Proyek</th>
                     <th className="px-4 py-3 font-semibold">Tugas</th>
                     <th className="px-4 py-3 font-semibold">Status</th>
+                    <th className="px-4 py-3 font-semibold">Prioritas</th>
                     <th className="px-4 py-3 font-semibold">Tag</th>
                     <th className="px-4 py-3 font-semibold">Ringkasan</th>
                     <th className="px-4 py-3 font-semibold">Aksi</th>
@@ -737,7 +821,7 @@ export default function Home() {
                       <Fragment key={idx}>
                         {isEditing && firstOfId && (
                           <tr>
-                            <td colSpan={7} className="px-4 py-3 bg-indigo-50/50">
+                            <td colSpan={8} className="px-4 py-3 bg-indigo-50/50">
                               {editFormJsx}
                             </td>
                           </tr>
@@ -752,6 +836,14 @@ export default function Home() {
                                 row.status === 'Blocked' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
                                 }`}>
                                 {row.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${row.priority === 'kritis' ? 'bg-red-100 text-red-800' :
+                                row.priority === 'tinggi' ? 'bg-orange-100 text-orange-800' :
+                                row.priority === 'rendah' ? 'bg-slate-100 text-slate-600' : 'bg-sky-100 text-sky-800'
+                                }`}>
+                                {priorityLabels[row.priority] || 'Sedang'}
                               </span>
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap">
@@ -808,6 +900,16 @@ export default function Home() {
                         }`}>
                         {item.status}
                       </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${(item.priority || 'sedang') === 'kritis' ? 'bg-red-100 text-red-800' :
+                        (item.priority || 'sedang') === 'tinggi' ? 'bg-orange-100 text-orange-800' :
+                        (item.priority || 'sedang') === 'rendah' ? 'bg-slate-100 text-slate-600' : 'bg-sky-100 text-sky-800'
+                        }`}>
+                        {priorityLabels[(item.priority || 'sedang').toLowerCase()] || 'Sedang'}
+                      </span>
+                      <span className="text-xs text-slate-400">Prioritas</span>
                     </div>
 
                     <p className="text-sm text-slate-700 italic">"{item.summary}"</p>

@@ -29,6 +29,8 @@ export async function POST(request) {
     }
     if (!Array.isArray(tags)) tags = [];
 
+    const priority = body.priority || 'sedang';
+
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -43,6 +45,7 @@ export async function POST(request) {
           summary: summary.trim(),
           tasks,
           tags,
+          priority,
           raw_text: body.raw_text?.trim() || '',
         }
       ])

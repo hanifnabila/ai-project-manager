@@ -54,6 +54,10 @@ export async function PATCH(request) {
       updates.tags = Array.isArray(tags) ? tags : [];
     }
 
+    if (typeof body.priority === 'string' && body.priority) {
+      updates.priority = body.priority.toLowerCase();
+    }
+
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ success: false, error: 'Tidak ada field yang diubah' }, { status: 400 });
     }

@@ -31,6 +31,7 @@ export async function POST(request) {
     - status ("In Progress" | "Completed" | "Blocked")
     - summary (string: ringkasan singkat dalam 1 kalimat)
     - tags (array of strings: 1-3 tag/kategori/label singkat untuk mengelompokkan catatan, misalnya nama klien, jenis pekerjaan seperti "Backend", "Frontend", "Bug Fix", atau nama modul)
+    - priority (string: salah satu dari "Rendah" | "Sedang" | "Tinggi" | "Kritis", nilai prioritas pekerjaan ini)
 
     Catatan Mentah: "${rawText}"
     `;
@@ -54,6 +55,7 @@ export async function POST(request) {
           summary: parsedData.summary,
           tasks: parsedData.tasks,
           tags: Array.isArray(parsedData.tags) ? parsedData.tags : [],
+          priority: (parsedData.priority || 'sedang').toLowerCase(),
           raw_text: rawText,
         }
       ])
