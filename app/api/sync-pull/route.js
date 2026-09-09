@@ -33,6 +33,7 @@ export async function GET(request) {
     const { data, error } = await supabase
       .from(table)
       .select('*')
+      .is('deleted_at', null)
       .gt('updated_at', sinceDate)
       .order('updated_at', { ascending: true })
       .limit(5000);

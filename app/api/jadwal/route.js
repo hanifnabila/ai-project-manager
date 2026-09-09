@@ -140,16 +140,19 @@ export async function DELETE(request) {
       return NextResponse.json({ success: false, error: 'ID kegiatan tidak valid' }, { status: 400 });
     }
 
-    // Soft-delete agar bisa disinkronkan antar perangkat
-    const { data, error } = await supabase
+    // Hapus permanen dari database (dan jadwal_logs terkait)
+    const { error } = await supabase
       .from('jadwal_activities')
-      .update({ deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-      .eq('id', id)
-      .select();
+      .delete()
+      .eq('id', id);
+
+    if (!error) {
+      await supabase.from('jadwal_logs').delete().eq('activity_id', id);
+    }
 
     if (error) throw error;
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting jadwal activity:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

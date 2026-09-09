@@ -6,7 +6,7 @@ import JadwalSection from '@/components/JadwalSection';
 import LockScreen from '@/components/LockScreen';
 import SecuritySettings from '@/components/SecuritySettings';
 import ConfirmDialog from '@/components/ConfirmDialog';
-import { cacheRows, networkOrCache, enqueue, applyLocal, localUpsert, localSoftDelete } from '@/lib/offlineApi';
+import { cacheRows, networkOrCache, enqueue, applyLocal, localUpsert, localSoftDelete, evictLocal } from '@/lib/offlineApi';
 import { isOnline, syncAll, pendingCount } from '@/lib/sync';
 
 const UNLOCK_KEY = 'apm_unlocked_at';
@@ -184,6 +184,7 @@ export default function Home() {
       const { data, error } = await supabase
         .from('progress_logs')
         .select('*')
+        .is('deleted_at', null)
         .neq('status', 'Completed')
         .gte('deadline', today)
         .not('deadline', 'is', null)
@@ -210,6 +211,7 @@ export default function Home() {
       const { data, error } = await supabase
         .from('progress_logs')
         .select('*')
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
       if (error) throw new Error(error.message);
       return data || [];
@@ -435,7 +437,7 @@ export default function Home() {
       const result = await res.json();
       if (!result.success) throw new Error(result.error);
 
-      await cacheRows('progress_logs', result.data || []);
+      await evictLocal('progress_logs', id);
       fetchHistory();
       fetchDeadlines();
     } catch (err) {

@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '@/lib/supabase';
-import { cacheRows, networkOrCache, enqueue, applyLocal, localUpsert, localSoftDelete } from '@/lib/offlineApi';
+import { cacheRows, networkOrCache, enqueue, applyLocal, localUpsert, localSoftDelete, evictLocal } from '@/lib/offlineApi';
 import { isOnline } from '@/lib/sync';
 import ConfirmDialog from '@/components/ConfirmDialog';
 
@@ -73,13 +73,13 @@ export default function JadwalSection() {
 
     const netActs = async () => {
       if (!supabase) throw new Error('offline');
-      const { data, error } = await supabase.from('jadwal_activities').select('*').order('created_at', { ascending: false });
+      const { data, error } = await supabase.from('jadwal_activities').select('*').is('deleted_at', null).order('created_at', { ascending: false });
       if (error) throw new Error(error.message);
       return data || [];
     };
     const netLogs = async () => {
       if (!supabase) throw new Error('offline');
-      const { data, error } = await supabase.from('jadwal_logs').select('*');
+      const { data, error } = await supabase.from('jadwal_logs').select('*').is('deleted_at', null);
       if (error) throw new Error(error.message);
       return data || [];
     };
@@ -301,7 +301,7 @@ export default function JadwalSection() {
       });
       const result = await res.json();
       if (!result.success) throw new Error(result.error);
-      await cacheRows('jadwal_activities', result.data || []);
+      await evictLocal('jadwal_activities', id);
       setActivities((prev) => prev.filter((a) => a.id !== id));
       setLogs((prev) => prev.filter((l) => l.activity_id !== id));
     } catch (err) {

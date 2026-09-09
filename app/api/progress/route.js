@@ -99,16 +99,15 @@ export async function DELETE(request) {
       return NextResponse.json({ success: false, error: 'ID catatan tidak valid' }, { status: 400 });
     }
 
-    // Soft-delete agar bisa disinkronkan antar perangkat & dipulihkan offline
-    const { data, error } = await supabase
+    // Hapus permanen dari database
+    const { error } = await supabase
       .from('progress_logs')
-      .update({ deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-      .eq('id', id)
-      .select();
+      .delete()
+      .eq('id', id);
 
     if (error) throw error;
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting progress:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
