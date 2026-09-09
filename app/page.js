@@ -28,14 +28,17 @@ export default function Home() {
     priority: 'sedang',
     summary: '',
     tags: '',
+    deadline: '',
   });
   const [manualError, setManualError] = useState('');
   const [manualLoading, setManualLoading] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [editForm, setEditForm] = useState({ project_name: '', tasks: '', status: 'In Progress', priority: 'sedang', summary: '', tags: '' });
+  const [editForm, setEditForm] = useState({ project_name: '', tasks: '', status: 'In Progress', priority: 'sedang', summary: '', tags: '', deadline: '' });
   const [editError, setEditError] = useState('');
   const [editLoading, setEditLoading] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [upcomingDeadlines, setUpcomingDeadlines] = useState([]);
+  const [deadlineError, setDeadlineError] = useState('');
 
   const PRIORITY_OPTIONS = [
     { value: 'rendah', label: 'Rendah' },
@@ -47,6 +50,7 @@ export default function Home() {
   // Ambil data dari Supabase saat halaman pertama kali dibuka
   useEffect(() => {
     fetchHistory();
+    fetchDeadlines();
   }, []);
 
   // Reset halaman ke 1 saat filter / pencarian / urutan berubah
@@ -62,6 +66,41 @@ export default function Home() {
     return [];
   };
 
+  const safeParse = (value, fallback) => {
+    if (Array.isArray(value)) return value;
+    if (typeof value !== 'string') return fallback;
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : fallback;
+    } catch {
+      return fallback;
+    }
+  };
+
+  const fetchDeadlines = async () => {
+    if (!supabase) return;
+
+    const today = new Date().toISOString().slice(0, 10);
+    const { data, error } = await supabase
+      .from('progress_logs')
+      .select('*')
+      .neq('status', 'Completed')
+      .gte('deadline', today)
+      .not('deadline', 'is', null)
+      .order('deadline', { ascending: true })
+      .limit(5);
+
+    if (error) {
+      setDeadlineError(error.message);
+      return;
+    }
+    setUpcomingDeadlines((data || []).map(item => ({
+      ...item,
+      tasks: safeParse(item.tasks, []),
+      tags: safeParse(item.tags, []),
+    })));
+  };
+
   const fetchHistory = async () => {
     if (!supabase) return;
 
@@ -72,16 +111,6 @@ export default function Home() {
 
     if (!error && data) {
       // Format ulang data tasks & tags dari string JSON kembali ke array
-      const safeParse = (value, fallback) => {
-        if (Array.isArray(value)) return value;
-        if (typeof value !== 'string') return fallback;
-        try {
-          const parsed = JSON.parse(value);
-          return Array.isArray(parsed) ? parsed : fallback;
-        } catch {
-          return fallback;
-        }
-      };
       const formattedData = data.map(item => ({
         ...item,
         tasks: safeParse(item.tasks, []),
@@ -116,6 +145,7 @@ export default function Home() {
 
       setRawText('');
       fetchHistory(); // Refresh daftar riwayat dari database
+      fetchDeadlines(); // Refresh daftar deadline terdekat
     } catch (err) {
       setError(err.message);
     } finally {
@@ -132,6 +162,7 @@ export default function Home() {
       summary: manualForm.summary,
       tasks: manualForm.tasks,
       tags: parseTags(manualForm.tags),
+      deadline: manualForm.deadline || null,
     };
 
     setManualLoading(true);
@@ -148,9 +179,10 @@ export default function Home() {
       if (!result.success) throw new Error(result.error);
 
       setManualOpen(false);
-      setManualForm({ project_name: '', tasks: '', status: 'In Progress', priority: 'sedang', summary: '', tags: '' });
+      setManualForm({ project_name: '', tasks: '', status: 'In Progress', priority: 'sedang', summary: '', tags: '', deadline: '' });
       setError('');
       fetchHistory();
+      fetchDeadlines();
     } catch (err) {
       setManualError(err.message);
     } finally {
@@ -167,13 +199,14 @@ export default function Home() {
       priority: (item.priority || 'sedang').toLowerCase(),
       summary: item.summary || '',
       tags: (item.tags || []).join(', '),
+      deadline: item.deadline || '',
     });
     setEditError('');
   };
 
   const cancelEdit = () => {
     setEditingId(null);
-    setEditForm({ project_name: '', tasks: '', status: 'In Progress', priority: 'sedang', summary: '', tags: '' });
+    setEditForm({ project_name: '', tasks: '', status: 'In Progress', priority: 'sedang', summary: '', tags: '', deadline: '' });
     setEditError('');
   };
 
@@ -194,6 +227,7 @@ export default function Home() {
 
       cancelEdit();
       fetchHistory();
+      fetchDeadlines();
     } catch (err) {
       setEditError(err.message);
     } finally {
@@ -216,6 +250,7 @@ export default function Home() {
       if (!result.success) throw new Error(result.error);
 
       fetchHistory();
+      fetchDeadlines();
     } catch (err) {
       window.alert(`Gagal menghapus: ${err.message}`);
     } finally {
@@ -331,6 +366,23 @@ export default function Home() {
     return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
+  const daysUntil = (iso) => {
+    if (!iso) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const target = new Date(`${iso}T00:00:00`);
+    return Math.round((target - today) / 86400000);
+  };
+
+  const deadlineBadge = (iso) => {
+    const diff = daysUntil(iso);
+    if (diff === null || diff === undefined) return null;
+    if (diff === 0) return { text: 'Hari ini', cls: 'bg-rose-600 text-white' };
+    if (diff === 1) return { text: 'Besok', cls: 'bg-orange-500 text-white' };
+    if (diff < 0) return { text: `Lewat ${Math.abs(diff)} hari`, cls: 'bg-slate-500 text-white' };
+    return { text: `${diff} hari lagi`, cls: 'bg-amber-400 text-amber-950' };
+  };
+
   const totalPages = Math.max(1, Math.ceil(sortedHistory.length / pageSize));
   const safePage = Math.min(page, totalPages);
   const paginatedHistory = sortedHistory.slice((safePage - 1) * pageSize, safePage * pageSize);
@@ -345,6 +397,7 @@ export default function Home() {
       priority: (item.priority || 'sedang').toLowerCase(),
       summary: item.summary,
       tags: item.tags || [],
+      deadline: item.deadline,
       created_at: item.created_at,
     }))
   );
@@ -398,6 +451,15 @@ export default function Home() {
             <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </select>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-slate-700 mb-1">Deadline</label>
+        <input
+          type="date"
+          value={editForm.deadline}
+          onChange={(e) => setEditForm({ ...editForm, deadline: e.target.value })}
+          className="w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
+        />
       </div>
       <div>
         <label className="block text-sm font-medium text-slate-700 mb-1">Ringkasan</label>
@@ -508,6 +570,54 @@ export default function Home() {
             </div>
           </section>
 
+          {/* Deadline Terdekat */}
+          {upcomingDeadlines.length > 0 && (
+            <section className="rounded-2xl border border-rose-200 bg-gradient-to-br from-rose-50 via-white to-amber-50 p-6 shadow-sm sm:p-8">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-600 text-white shadow-md">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-xl font-extrabold tracking-tight text-rose-900">Deadline Terdekat</h2>
+                  <p className="text-sm text-rose-700">
+                    5 tugas teratas yang belum selesai dan paling mendekati tenggat waktunya.
+                  </p>
+                </div>
+                <span className="rounded-full bg-rose-600 px-3 py-1 text-xs font-bold text-white">
+                  {upcomingDeadlines.length} tugas
+                </span>
+              </div>
+
+              {deadlineError && <p className="mt-3 text-sm text-red-600">{deadlineError}</p>}
+
+              <ul className="mt-5 space-y-3">
+                {upcomingDeadlines.map((item) => {
+                  const badge = deadlineBadge(item.deadline) || { text: '-', cls: 'bg-slate-100 text-slate-600' };
+                  return (
+                    <li
+                      key={item.id}
+                      className="flex items-center gap-4 rounded-xl border border-rose-100 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
+                    >
+                      <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-base font-bold ${badge.cls}`}>
+                        {daysUntil(item.deadline)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-semibold text-slate-800">{item.project_name}</p>
+                        <p className="truncate text-xs text-slate-500">"{item.summary}"</p>
+                      </div>
+                      <div className="text-right whitespace-nowrap">
+                        <p className="text-xs font-semibold text-rose-600">{badge.text}</p>
+                        <p className="text-xs text-slate-400">{formatDate(item.deadline)}</p>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
+
         {/* Input Form */}
         <div className="bg-white shadow-sm border border-slate-200 rounded-xl p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -613,6 +723,19 @@ export default function Home() {
                     <option key={o.value} value={o.value}>{o.label}</option>
                   ))}
                 </select>
+              </div>
+
+              <div>
+                <label htmlFor="manualDeadline" className="block text-sm font-medium text-amber-900 mb-1">
+                  Deadline (opsional)
+                </label>
+                <input
+                  id="manualDeadline"
+                  type="date"
+                  value={manualForm.deadline}
+                  onChange={(e) => setManualForm({ ...manualForm, deadline: e.target.value })}
+                  className="w-full rounded-lg border border-amber-300 p-3 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white"
+                />
               </div>
 
               <div>
@@ -863,6 +986,7 @@ export default function Home() {
                     <th className="px-4 py-3 font-semibold">Tugas</th>
                     <th className="px-4 py-3 font-semibold">Status</th>
                     <th className="px-4 py-3 font-semibold">Prioritas</th>
+                    <th className="px-4 py-3 font-semibold">Deadline</th>
                     <th className="px-4 py-3 font-semibold">Tag</th>
                     <th className="px-4 py-3 font-semibold">Ringkasan</th>
                     <th className="px-4 py-3 font-semibold">Aksi</th>
@@ -876,7 +1000,7 @@ export default function Home() {
                       <Fragment key={idx}>
                         {isEditing && firstOfId && (
                           <tr>
-                            <td colSpan={8} className="px-4 py-3 bg-indigo-50/50">
+                            <td colSpan={9} className="px-4 py-3 bg-indigo-50/50">
                               {editFormJsx}
                             </td>
                           </tr>
@@ -900,6 +1024,21 @@ export default function Home() {
                                 }`}>
                                 {priorityLabels[row.priority] || 'Sedang'}
                               </span>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              {row.deadline ? (() => {
+                                const badge = deadlineBadge(row.deadline);
+                                return (
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${badge ? badge.cls : 'bg-slate-100 text-slate-600'}`}>
+                                      {formatDate(row.deadline)}
+                                    </span>
+                                    {badge && <span className="text-[10px] font-medium text-rose-600">{badge.text}</span>}
+                                  </div>
+                                );
+                              })() : (
+                                <span className="text-xs text-slate-300">—</span>
+                              )}
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap">
                               <div className="flex flex-wrap gap-1">
@@ -966,6 +1105,21 @@ export default function Home() {
                       </span>
                       <span className="text-xs text-slate-400">Prioritas</span>
                     </div>
+
+                    {item.deadline && (() => {
+                      const badge = deadlineBadge(item.deadline);
+                      return (
+                        <div className="flex items-center gap-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${badge ? badge.cls : 'bg-slate-100 text-slate-600'}`}>
+                            {formatDate(item.deadline)}
+                          </span>
+                          {badge && <span className="text-xs font-medium text-rose-600">{badge.text}</span>}
+                        </div>
+                      );
+                    })()}
 
                     <p className="text-sm text-slate-700 italic">"{item.summary}"</p>
 

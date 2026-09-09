@@ -32,6 +32,7 @@ export async function POST(request) {
     - summary (string: ringkasan singkat dalam 1 kalimat)
     - tags (array of strings: 1-3 tag/kategori/label singkat untuk mengelompokkan catatan, misalnya nama klien, jenis pekerjaan seperti "Backend", "Frontend", "Bug Fix", atau nama modul)
     - priority (string: salah satu dari "Rendah" | "Sedang" | "Tinggi" | "Kritis", nilai prioritas pekerjaan ini)
+    - deadline (string: tanggal tenggat waktu/deadline dalam format "YYYY-MM-DD", atau null jika catatan tidak menyebutkan deadline secara eksplisit)
 
     Catatan Mentah: "${rawText}"
     `;
@@ -45,6 +46,10 @@ export async function POST(request) {
     cleanText = cleanText.replace(/^```json\s*/, '').replace(/^```\s*/, '').replace(/\s*```$/, '');
     const parsedData = JSON.parse(cleanText);
 
+    const rawDeadline = parsedData.deadline;
+    const deadline =
+      typeof rawDeadline === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(rawDeadline) ? rawDeadline : null;
+
     // SIMPAN KE SUPABASE
     const { data, error } = await supabase
       .from('progress_logs')
@@ -56,6 +61,7 @@ export async function POST(request) {
           tasks: parsedData.tasks,
           tags: Array.isArray(parsedData.tags) ? parsedData.tags : [],
           priority: (parsedData.priority || 'sedang').toLowerCase(),
+          deadline,
           raw_text: rawText,
         }
       ])

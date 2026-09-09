@@ -58,6 +58,13 @@ export async function PATCH(request) {
       updates.priority = body.priority.toLowerCase();
     }
 
+    if (body.deadline !== undefined) {
+      updates.deadline =
+        typeof body.deadline === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.deadline)
+          ? body.deadline
+          : null;
+    }
+
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ success: false, error: 'Tidak ada field yang diubah' }, { status: 400 });
     }

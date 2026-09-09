@@ -31,6 +31,11 @@ export async function POST(request) {
 
     const priority = body.priority || 'sedang';
 
+    const deadline =
+      typeof body.deadline === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.deadline)
+        ? body.deadline
+        : null;
+
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -46,6 +51,7 @@ export async function POST(request) {
           tasks,
           tags,
           priority,
+          deadline,
           raw_text: body.raw_text?.trim() || '',
         }
       ])
