@@ -3,8 +3,12 @@
 import { useState, useEffect, Fragment } from 'react';
 import { supabase } from '@/lib/supabase';
 import JadwalSection from '@/components/JadwalSection';
+import LockScreen from '@/components/LockScreen';
+import SecuritySettings from '@/components/SecuritySettings';
 
 export default function Home() {
+  const [unlocked, setUnlocked] = useState(false);
+  const [securityOpen, setSecurityOpen] = useState(false);
   const [rawText, setRawText] = useState('');
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState([]);
@@ -658,6 +662,11 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-100">
+      {/* Gate akses (layar kunci hacker) */}
+      {!unlocked && (
+        <LockScreen onUnlocked={() => setUnlocked(true)} />
+      )}
+
       {/* Latar dekoratif aurora */}
       <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
         <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-indigo-300/40 blur-3xl dark:bg-indigo-600/20" />
@@ -710,6 +719,28 @@ export default function Home() {
               </svg>
               {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
             </div>
+            <button
+              type="button"
+              onClick={() => setSecurityOpen(true)}
+              title="Ganti kunci akses (biometrik / pertanyaan / kode)"
+              aria-label="Ganti kunci akses"
+              className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/60 text-slate-600 shadow-sm ring-1 ring-slate-200/60 backdrop-blur transition-all hover:scale-105 hover:text-emerald-600 dark:bg-white/10 dark:text-slate-300 dark:ring-white/10 dark:hover:text-emerald-300"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={() => setUnlocked(false)}
+              title="Kunci aplikasi"
+              aria-label="Kunci aplikasi"
+              className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/60 text-slate-600 shadow-sm ring-1 ring-slate-200/60 backdrop-blur transition-all hover:scale-105 hover:text-indigo-600 dark:bg-white/10 dark:text-slate-300 dark:ring-white/10 dark:hover:text-amber-300"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </button>
             <button
               type="button"
               onClick={toggleTheme}
@@ -1741,6 +1772,8 @@ export default function Home() {
           </footer>
         </div>
       </main>
+
+      <SecuritySettings open={securityOpen} onClose={() => setSecurityOpen(false)} />
     </div>
   );
 }
