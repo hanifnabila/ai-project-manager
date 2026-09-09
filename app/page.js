@@ -479,6 +479,8 @@ export default function Home() {
     return acc;
   }, {});
 
+  const existingTags = [...new Set(history.flatMap(item => item.tags || []).filter(Boolean))].sort();
+
   // ==== Kalender ====
   const toISODate = (date) =>
     `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -539,11 +541,17 @@ export default function Home() {
         <label className="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Nama Proyek</label>
         <input
           type="text"
+          list="existing-projects-edit"
           value={editForm.project_name}
           onChange={(e) => setEditForm({ ...editForm, project_name: e.target.value })}
           className="w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-slate-600 dark:bg-slate-800/60 dark:text-slate-100 dark:placeholder-slate-400"
           required
         />
+        <datalist id="existing-projects-edit">
+          {Object.keys(projectCounts).map(name => (
+            <option key={name} value={name} />
+          ))}
+        </datalist>
       </div>
       <div>
         <label className="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Tugas (satu per baris)</label>
@@ -872,12 +880,18 @@ export default function Home() {
                 <input
                   id="manualProject"
                   type="text"
+                  list="existing-projects"
                   value={manualForm.project_name}
                   onChange={(e) => setManualForm({ ...manualForm, project_name: e.target.value })}
                   placeholder="Contoh: Sistem Absensi"
                   className="w-full rounded-lg border border-amber-300 p-3 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none dark:border-amber-400/40 dark:bg-slate-800/60 dark:text-amber-50 dark:placeholder-amber-200/50"
                   required
                 />
+                <datalist id="existing-projects">
+                  {Object.keys(projectCounts).map(name => (
+                    <option key={name} value={name} />
+                  ))}
+                </datalist>
               </div>
 
               <div>
@@ -961,11 +975,17 @@ export default function Home() {
                 <input
                   id="manualTags"
                   type="text"
+                  list="existing-tags"
                   value={manualForm.tags}
                   onChange={(e) => setManualForm({ ...manualForm, tags: e.target.value })}
                   placeholder="Contoh: Backend, Sistem Absensi, PT Klien"
                   className="w-full rounded-lg border border-amber-300 p-3 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none dark:border-amber-400/40 dark:bg-slate-800/60 dark:text-amber-50 dark:placeholder-amber-200/50"
                 />
+                <datalist id="existing-tags">
+                  {existingTags.map(tag => (
+                    <option key={tag} value={tag} />
+                  ))}
+                </datalist>
               </div>
 
               {manualError && <p className="text-sm text-red-600 dark:text-red-400">{manualError}</p>}
