@@ -641,18 +641,18 @@ export default function Home() {
       {/* Navbar */}
       <header className="sticky top-0 z-40 border-b border-slate-200/60 bg-white/60 backdrop-blur-xl dark:border-white/10 dark:bg-white/10">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
             <img
               src="/icons/logo.png"
               alt="Logo AI Project Manager"
-              className="h-10 w-10 rounded-lg object-cover ring-2 ring-indigo-100 dark:ring-white/20"
+              className="h-10 w-10 shrink-0 rounded-lg object-cover ring-2 ring-indigo-100 dark:ring-white/20"
             />
-            <div className="leading-tight">
-              <p className="font-extrabold tracking-tight">AI Project Manager</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Kelola progres proyek dengan bantuan AI</p>
+            <div className="min-w-0 leading-tight">
+              <p className="truncate font-extrabold tracking-tight">AI Project Manager</p>
+              <p className="hidden truncate text-xs text-slate-500 sm:block dark:text-slate-400">Kelola progres proyek dengan bantuan AI</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <div className="hidden items-center gap-2 rounded-full bg-white/60 px-4 py-1.5 text-sm font-medium text-slate-600 backdrop-blur dark:bg-white/10 dark:text-slate-300 sm:flex">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -704,17 +704,17 @@ export default function Home() {
                   Tulis catatan bebas apa saja yang sudah Anda kerjakan hari ini, biarkan AI yang
                   merapikannya menjadi data progres proyek yang rapi dan terstruktur.
                 </p>
-                <div className="mt-6 grid grid-cols-3 gap-3 sm:max-w-md">
-                  <div className="rounded-xl bg-white/10 px-4 py-3 ring-1 ring-white/20 backdrop-blur">
-                    <p className="text-2xl font-extrabold">{Object.keys(projectCounts).length}</p>
+                <div className="mt-6 grid grid-cols-3 gap-2 sm:max-w-md sm:gap-3">
+                  <div className="rounded-xl bg-white/10 px-2 py-3 ring-1 ring-white/20 backdrop-blur sm:px-4">
+                    <p className="text-xl font-extrabold sm:text-2xl">{Object.keys(projectCounts).length}</p>
                     <p className="text-xs text-indigo-200">Proyek</p>
                   </div>
-                  <div className="rounded-xl bg-white/10 px-4 py-3 ring-1 ring-white/20 backdrop-blur">
-                    <p className="text-2xl font-extrabold">{todayHistory.length}</p>
+                  <div className="rounded-xl bg-white/10 px-2 py-3 ring-1 ring-white/20 backdrop-blur sm:px-4">
+                    <p className="text-xl font-extrabold sm:text-2xl">{todayHistory.length}</p>
                     <p className="text-xs text-indigo-200">Catatan Hari Ini</p>
                   </div>
-                  <div className="rounded-xl bg-white/10 px-4 py-3 ring-1 ring-white/20 backdrop-blur">
-                    <p className="text-2xl font-extrabold">{history.length}</p>
+                  <div className="rounded-xl bg-white/10 px-2 py-3 ring-1 ring-white/20 backdrop-blur sm:px-4">
+                    <p className="text-xl font-extrabold sm:text-2xl">{history.length}</p>
                     <p className="text-xs text-indigo-200">Total Catatan</p>
                   </div>
                 </div>
@@ -756,19 +756,19 @@ export default function Home() {
                       <button
                         type="button"
                         onClick={() => setExpandedId(expanded ? null : item.id)}
-                        className="flex w-full items-center gap-4 text-left"
+                        className="flex w-full items-center gap-3 text-left sm:gap-4"
                         aria-expanded={expanded}
                       >
-                        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-base font-bold ${badge.cls}`}>
+                        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold sm:h-11 sm:w-11 sm:text-base ${badge.cls}`}>
                           {daysUntil(item.deadline)}
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="truncate font-semibold text-slate-800 dark:text-slate-100">{item.project_name}</p>
                           <p className="truncate text-xs text-slate-500 dark:text-slate-400">"{item.summary}"</p>
                         </div>
-                        <div className="text-right whitespace-nowrap">
+                        <div className="shrink-0 text-right whitespace-nowrap">
                           <p className="text-xs font-semibold text-rose-600 dark:text-rose-400">{badge.text}</p>
-                          <p className="text-xs text-slate-400 dark:text-slate-500">{formatDate(item.deadline)}</p>
+                          <p className="hidden text-xs text-slate-400 sm:block dark:text-slate-500">{formatDate(item.deadline)}</p>
                         </div>
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
@@ -1018,7 +1018,7 @@ export default function Home() {
                     key={v}
                     type="button"
                     onClick={() => setView(v)}
-                    className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                    className={`px-2.5 py-1.5 text-xs font-medium transition-colors sm:px-3 sm:text-sm ${
                       view === v ? 'bg-indigo-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-800/60 dark:text-slate-300 dark:hover:bg-slate-700/60'
                     }`}
                   >
@@ -1031,7 +1031,7 @@ export default function Home() {
                 onClick={handleDownloadMarkdown}
                 disabled={todayHistory.length === 0}
                 title={todayHistory.length === 0 ? 'Belum ada catatan hari ini' : 'Unduh riwayat hari ini sebagai file .md'}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors sm:px-3 sm:text-sm ${
                   todayHistory.length === 0
                     ? 'bg-slate-100 text-slate-400 cursor-not-allowed dark:bg-white/10 dark:text-slate-500'
                     : 'bg-indigo-600 text-white hover:bg-indigo-700'
@@ -1187,7 +1187,7 @@ export default function Home() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
                   <button
                     type="button"
                     onClick={() => changeMonth(-1)}
@@ -1196,7 +1196,7 @@ export default function Home() {
                   >
                     ‹
                   </button>
-                  <span className="min-w-[150px] text-center text-sm font-bold text-slate-700 dark:text-slate-200">{monthLabel}</span>
+                  <span className="min-w-[120px] text-center text-sm font-bold text-slate-700 sm:min-w-[150px] dark:text-slate-200">{monthLabel}</span>
                   <button
                     type="button"
                     onClick={() => changeMonth(1)}
@@ -1208,14 +1208,14 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={goToToday}
-                    className="rounded-lg px-3 py-1.5 text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+                    className="rounded-lg px-2.5 py-1.5 text-xs font-medium bg-indigo-600 text-white hover:bg-indigo-700 transition-colors sm:px-3 sm:text-sm"
                   >
                     Hari Ini
                   </button>
                 </div>
               </div>
 
-              <div className="mt-5 grid grid-cols-7 gap-1.5 text-center">
+              <div className="mt-5 grid grid-cols-7 gap-1 sm:gap-1.5 text-center">
                 {['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'].map(d => (
                   <div key={d} className="py-1 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
                     {d}
@@ -1227,7 +1227,7 @@ export default function Home() {
                     type="button"
                     disabled={!cell.inMonth}
                     onClick={() => cell.iso && setSelectedDay(cell.iso)}
-                    className={`relative min-h-[72px] rounded-lg p-1.5 text-left text-sm transition-colors ${
+                    className={`relative min-h-[56px] rounded-lg p-1 text-left text-sm transition-colors sm:min-h-[64px] sm:p-1.5 lg:min-h-[72px] ${
                       !cell.inMonth
                         ? 'pointer-events-none opacity-30'
                         : cell.iso === todayStr
@@ -1240,18 +1240,31 @@ export default function Home() {
                     <span className={`font-medium ${cell.iso === todayStr ? 'text-white' : 'text-slate-700 dark:text-slate-200'}`}>
                       {cell.dayNum}
                     </span>
-                    <div className="mt-1 space-y-0.5">
+                    <div className="mt-1 hidden space-y-0.5 sm:block">
                       {(tasksByDate[cell.iso] || []).slice(0, 2).map(t => (
                         <div key={t.id} className={`truncate rounded px-1 py-0.5 text-[10px] font-medium leading-tight ${statusChipClass(t.status)}`}>
                           {t.project_name}
                         </div>
                       ))}
                       {(tasksByDate[cell.iso] || []).length > 2 && (
-                        <div className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+                        <div className="hidden text-[10px] font-semibold text-slate-400 sm:block dark:text-slate-500">
                           +{(tasksByDate[cell.iso] || []).length - 2} lainnya
                         </div>
                       )}
                     </div>
+                    {(tasksByDate[cell.iso] || []).length > 0 && (
+                      <div className="mt-0.5 flex flex-wrap items-center gap-0.5 sm:hidden">
+                        {(tasksByDate[cell.iso] || []).length > 3 ? (
+                          <span className="rounded bg-rose-100 px-1 py-0.5 text-[9px] font-bold text-rose-700 dark:bg-rose-500/20 dark:text-rose-300">
+                            {(tasksByDate[cell.iso] || []).length}
+                          </span>
+                        ) : (
+                          (tasksByDate[cell.iso] || []).map(t => (
+                            <span key={t.id} className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: t.status === 'Completed' ? '#10b981' : t.status === 'Blocked' ? '#ef4444' : '#f59e0b' }} />
+                          ))
+                        )}
+                      </div>
+                    )}
                   </button>
                 ))}
               </div>
@@ -1272,7 +1285,7 @@ export default function Home() {
                           <button
                             type="button"
                             onClick={() => setExpandedId(isOpen ? null : item.id)}
-                            className="flex w-full items-center gap-3 text-left"
+                            className="flex w-full items-center gap-2 text-left sm:gap-3"
                           >
                             <span className="flex-1 truncate font-semibold text-indigo-600 dark:text-indigo-400">{item.project_name}</span>
                             <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${statusChipClass(item.status)}`}>
@@ -1541,7 +1554,7 @@ export default function Home() {
               <p className="text-sm text-slate-500 dark:text-slate-400">
                 Menampilkan {((safePage - 1) * pageSize) + 1}–{Math.min(safePage * pageSize, sortedHistory.length)} dari {sortedHistory.length} catatan
               </p>
-              <div className="flex items-center gap-1">
+              <div className="flex flex-wrap items-center justify-normal gap-1.5 sm:gap-1">
                 <button
                   type="button"
                   onClick={() => setPage(safePage - 1)}
@@ -1550,7 +1563,7 @@ export default function Home() {
                 >
                   ‹ Sebelumnya
                 </button>
-                <div className="flex items-center gap-1">
+                <div className="flex flex-wrap items-center justify-center gap-1">
                   {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
                     <button
                       key={p}
