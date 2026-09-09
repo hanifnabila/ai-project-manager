@@ -1,12 +1,34 @@
 'use client';
 
-import { useState, useEffect, Fragment } from 'react';
+import { useState, useEffect, useLayoutEffect, Fragment } from 'react';
 import { supabase } from '@/lib/supabase';
 import JadwalSection from '@/components/JadwalSection';
 import LockScreen from '@/components/LockScreen';
 import SecuritySettings from '@/components/SecuritySettings';
 import { cacheRows, networkOrCache, enqueue, applyLocal, localUpsert, localSoftDelete } from '@/lib/offlineApi';
 import { isOnline, syncAll, pendingCount } from '@/lib/sync';
+
+const UNLOCK_KEY = 'apm_unlocked_at';
+const UNLOCK_TTL_MS = 60 * 60 * 1000; // 1 jam
+
+function isUnlockValid() {
+  try {
+    const ts = Number(localStorage.getItem(UNLOCK_KEY) || 0);
+    return ts > 0 && Date.now() - ts < UNLOCK_TTL_MS;
+  } catch {
+    return false;
+  }
+}
+
+function grantLock(val) {
+  try {
+    if (val) localStorage.setItem(UNLOCK_KEY, String(Date.now()));
+    else localStorage.removeItem(UNLOCK_KEY);
+  } catch {
+    /* abaikan */
+  }
+  return val;
+}
 
 export default function Home() {
   const [unlocked, setUnlocked] = useState(false);
@@ -74,6 +96,18 @@ export default function Home() {
   useEffect(() => {
     fetchHistory();
     fetchDeadlines();
+  }, []);
+
+  // Sesi unlock: refresh tidak mengharuskan login ulang selama < 1 jam.
+  useLayoutEffect(() => {
+    setUnlocked(isUnlockValid());
+  }, []);
+
+  useEffect(() => {
+    const iv = setInterval(() => {
+      setUnlocked((u) => (u ? isUnlockValid() : false));
+    }, 15_000);
+    return () => clearInterval(iv);
   }, []);
 
   // Tema: auto-mengikuti sistem, bisa di-toggle oleh pengguna (disimpan di localStorage)
@@ -812,7 +846,7 @@ export default function Home() {
     <div className="min-h-screen bg-slate-100 text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-100">
       {/* Gate akses (layar kunci hacker) */}
       {!unlocked && (
-        <LockScreen onUnlocked={() => setUnlocked(true)} />
+        <LockScreen onUnlocked={() => setUnlocked(grantLock(true))} />
       )}
 
       {/* Latar dekoratif aurora */}
@@ -880,7 +914,7 @@ export default function Home() {
             </button>
             <button
               type="button"
-              onClick={() => setUnlocked(false)}
+              onClick={() => setUnlocked(grantLock(false))}
               title="Kunci aplikasi"
               aria-label="Kunci aplikasi"
               className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/60 text-slate-600 shadow-sm ring-1 ring-slate-200/60 backdrop-blur transition-all hover:scale-105 hover:text-indigo-600 dark:bg-white/10 dark:text-slate-300 dark:ring-white/10 dark:hover:text-amber-300"
