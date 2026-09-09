@@ -806,34 +806,55 @@ export default function Home() {
                       key={item.id}
                       className="rounded-xl border border-rose-100/70 bg-white/70 p-4 shadow-sm backdrop-blur-md transition-shadow dark:border-white/10 dark:bg-white/[0.06]"
                     >
-                      <button
-                        type="button"
-                        onClick={() => setExpandedId(expanded ? null : item.id)}
-                        className="flex w-full items-center gap-3 text-left sm:gap-4"
-                        aria-expanded={expanded}
-                      >
-                        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold sm:h-11 sm:w-11 sm:text-base ${badge.cls}`}>
-                          {daysUntil(item.deadline)}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate font-semibold text-slate-800 dark:text-slate-100">{item.project_name}</p>
-                          <p className="truncate text-xs text-slate-500 dark:text-slate-400">"{item.summary}"</p>
-                        </div>
-                        <div className="shrink-0 text-right whitespace-nowrap">
-                          <p className="text-xs font-semibold text-rose-600 dark:text-rose-400">{badge.text}</p>
-                          <p className="hidden text-xs text-slate-400 sm:block dark:text-slate-500">{formatDate(item.deadline)}</p>
-                        </div>
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className={`h-4 w-4 shrink-0 text-slate-400 transition-transform dark:text-slate-500 ${expanded ? 'rotate-180' : ''}`}
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                          strokeWidth={2}
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setExpandedId(expanded ? null : item.id)}
+                          className="flex min-w-0 flex-1 items-center gap-3 text-left sm:gap-4"
+                          aria-expanded={expanded}
                         >
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </button>
+                          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold sm:h-11 sm:w-11 sm:text-base ${badge.cls}`}>
+                            {daysUntil(item.deadline)}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-semibold text-slate-800 dark:text-slate-100">{item.project_name}</p>
+                            <p className="truncate text-xs text-slate-500 dark:text-slate-400">"{item.summary}"</p>
+                          </div>
+                          <div className="shrink-0 text-right whitespace-nowrap">
+                            <p className="text-xs font-semibold text-rose-600 dark:text-rose-400">{badge.text}</p>
+                            <p className="hidden text-xs text-slate-400 sm:block dark:text-slate-500">{formatDate(item.deadline)}</p>
+                          </div>
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className={`h-4 w-4 shrink-0 text-slate-400 transition-transform dark:text-slate-500 ${expanded ? 'rotate-180' : ''}`}
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openCompleteModal(item)}
+                          disabled={completingId === item.id}
+                          className="flex shrink-0 items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
+                          title="Tandai selesai"
+                        >
+                          {completingId === item.id ? (
+                            <svg className="h-3.5 w-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                            </svg>
+                          ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                          Selesaikan
+                        </button>
+                      </div>
 
                       {expanded && (
                         <div className="mt-3 space-y-3 border-t border-rose-100/70 pt-3 dark:border-white/10">
