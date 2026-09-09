@@ -442,16 +442,71 @@ export default function Home() {
   );
 
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-900 py-10 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-3xl mx-auto space-y-8">
-
-        {/* Header */}
-        <div className="text-center">
-          <h1 className="text-3xl font-extrabold tracking-tight">AI Project Manager Pribadi</h1>
-          <p className="mt-2 text-sm text-slate-600">
-            Tulis catatan bebas apa saja yang sudah Anda kerjakan hari ini, biarkan AI yang merapikannya.
-          </p>
+    <div className="min-h-screen bg-slate-100 text-slate-900">
+      {/* Navbar */}
+      <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/80 backdrop-blur">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+          <div className="flex items-center gap-3">
+            <img
+              src="/icons/logo.png"
+              alt="Logo AI Project Manager"
+              className="h-10 w-10 rounded-lg object-cover ring-2 ring-indigo-100"
+            />
+            <div className="leading-tight">
+              <p className="font-extrabold tracking-tight">AI Project Manager</p>
+              <p className="text-xs text-slate-500">Kelola progres proyek dengan bantuan AI</p>
+            </div>
+          </div>
+          <div className="hidden items-center gap-2 rounded-full bg-slate-100 px-4 py-1.5 text-sm font-medium text-slate-600 sm:flex">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+          </div>
         </div>
+      </header>
+
+      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:py-10">
+        <div className="space-y-8">
+
+          {/* Hero */}
+          <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-700 via-indigo-600 to-violet-700 p-6 text-white shadow-xl sm:p-10">
+            <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-white/10 blur-2xl" />
+            <div className="pointer-events-none absolute -bottom-24 -left-16 h-72 w-72 rounded-full bg-violet-400/25 blur-2xl" />
+            <div className="pointer-events-none absolute right-10 bottom-0 h-24 w-24 rounded-full bg-indigo-300/30 blur-xl" />
+            <div className="relative flex flex-col items-center gap-6 sm:flex-row sm:items-center">
+              <div className="shrink-0 rounded-2xl bg-white/10 p-3 ring-1 ring-white/30 backdrop-blur">
+                <img
+                  src="/icons/logo.png"
+                  alt="Logo"
+                  className="h-24 w-24 rounded-xl object-cover shadow-lg sm:h-28 sm:w-28"
+                />
+              </div>
+              <div className="flex-1 text-center sm:text-left">
+                <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
+                  AI Project Manager Pribadi
+                </h1>
+                <p className="mt-2 text-sm text-indigo-100 sm:text-base">
+                  Tulis catatan bebas apa saja yang sudah Anda kerjakan hari ini, biarkan AI yang
+                  merapikannya menjadi data progres proyek yang rapi dan terstruktur.
+                </p>
+                <div className="mt-6 grid grid-cols-3 gap-3 sm:max-w-md">
+                  <div className="rounded-xl bg-white/10 px-4 py-3 ring-1 ring-white/20 backdrop-blur">
+                    <p className="text-2xl font-extrabold">{Object.keys(projectCounts).length}</p>
+                    <p className="text-xs text-indigo-200">Proyek</p>
+                  </div>
+                  <div className="rounded-xl bg-white/10 px-4 py-3 ring-1 ring-white/20 backdrop-blur">
+                    <p className="text-2xl font-extrabold">{todayHistory.length}</p>
+                    <p className="text-xs text-indigo-200">Catatan Hari Ini</p>
+                  </div>
+                  <div className="rounded-xl bg-white/10 px-4 py-3 ring-1 ring-white/20 backdrop-blur">
+                    <p className="text-2xl font-extrabold">{history.length}</p>
+                    <p className="text-xs text-indigo-200">Total Catatan</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
 
         {/* Input Form */}
         <div className="bg-white shadow-sm border border-slate-200 rounded-xl p-6">
@@ -999,7 +1054,11 @@ export default function Home() {
           )}
         </div>
 
-      </div>
-    </main>
+          <footer className="border-t border-slate-200 pt-6 text-center text-xs text-slate-400">
+            &copy; {new Date().getFullYear()} AI Project Manager &mdash; Dibangun dengan Supabase &amp; Gemini
+          </footer>
+        </div>
+      </main>
+    </div>
   );
 }
