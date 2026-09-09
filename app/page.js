@@ -43,6 +43,14 @@ export default function Home() {
   const [completingId, setCompletingId] = useState(null);
   const [completeError, setCompleteError] = useState('');
   const [theme, setTheme] = useState('system');
+  const [expandedId, setExpandedId] = useState(null);
+  const [calendarDate, setCalendarDate] = useState(() => {
+    const d = new Date();
+    d.setDate(1);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
+  const [selectedDay, setSelectedDay] = useState(null);
 
   const PRIORITY_OPTIONS = [
     { value: 'rendah', label: 'Rendah' },
@@ -471,6 +479,60 @@ export default function Home() {
     return acc;
   }, {});
 
+  // ==== Kalender ====
+  const toISODate = (date) =>
+    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+
+  const todayStr = toISODate(new Date());
+
+  const tasksByDate = {};
+  history.forEach(item => {
+    if (item.deadline) {
+      if (!tasksByDate[item.deadline]) tasksByDate[item.deadline] = [];
+      tasksByDate[item.deadline].push(item);
+    }
+  });
+
+  const calYear = calendarDate.getFullYear();
+  const calMonth = calendarDate.getMonth();
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const offset = (new Date(calYear, calMonth, 1).getDay() + 6) % 7; // Senin = 0
+  const cellsCount = Math.ceil((offset + daysInMonth) / 7) * 7;
+  const calendarCells = [];
+  for (let i = 0; i < cellsCount; i++) {
+    const dayNum = i - offset + 1;
+    const inMonth = dayNum >= 1 && dayNum <= daysInMonth;
+    const iso = inMonth ? `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}` : null;
+    calendarCells.push({ dayNum: inMonth ? dayNum : null, iso, inMonth });
+  }
+  const calendarWeeks = [];
+  for (let w = 0; w < calendarCells.length / 7; w++) {
+    calendarWeeks.push(calendarCells.slice(w * 7, w * 7 + 7));
+  }
+
+  const monthLabel = calendarDate.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+  const selectedTasks = selectedDay ? (tasksByDate[selectedDay] || []) : [];
+  const calendarTaskCount = Object.keys(tasksByDate).length;
+
+  const statusChipClass = (status) =>
+    status === 'Completed'
+      ? 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-400'
+      : status === 'Blocked'
+        ? 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-400'
+        : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/15 dark:text-yellow-400';
+
+  const changeMonth = (delta) => {
+    setCalendarDate(new Date(calYear, calMonth + delta, 1));
+  };
+
+  const goToToday = () => {
+    const d = new Date();
+    d.setDate(1);
+    d.setHours(0, 0, 0, 0);
+    setCalendarDate(d);
+    setSelectedDay(todayStr);
+  };
+
   const editFormJsx = (
     <form onSubmit={saveEdit} className="space-y-3">
       <div>
@@ -685,22 +747,71 @@ export default function Home() {
               <ul className="mt-5 space-y-3">
                 {upcomingDeadlines.map((item) => {
                   const badge = deadlineBadge(item.deadline) || { text: '-', cls: 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-400' };
+                  const expanded = expandedId === item.id;
                   return (
                     <li
                       key={item.id}
-                      className="flex items-center gap-4 rounded-xl border border-rose-100/70 bg-white/70 p-4 shadow-sm backdrop-blur-md transition-shadow hover:shadow-md dark:border-white/10 dark:bg-white/[0.06]"
+                      className="rounded-xl border border-rose-100/70 bg-white/70 p-4 shadow-sm backdrop-blur-md transition-shadow dark:border-white/10 dark:bg-white/[0.06]"
                     >
-                      <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-base font-bold ${badge.cls}`}>
-                        {daysUntil(item.deadline)}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-semibold text-slate-800 dark:text-slate-100">{item.project_name}</p>
-                        <p className="truncate text-xs text-slate-500 dark:text-slate-400">"{item.summary}"</p>
-                      </div>
-                      <div className="text-right whitespace-nowrap">
-                        <p className="text-xs font-semibold text-rose-600 dark:text-rose-400">{badge.text}</p>
-                        <p className="text-xs text-slate-400 dark:text-slate-500">{formatDate(item.deadline)}</p>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedId(expanded ? null : item.id)}
+                        className="flex w-full items-center gap-4 text-left"
+                        aria-expanded={expanded}
+                      >
+                        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-base font-bold ${badge.cls}`}>
+                          {daysUntil(item.deadline)}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-semibold text-slate-800 dark:text-slate-100">{item.project_name}</p>
+                          <p className="truncate text-xs text-slate-500 dark:text-slate-400">"{item.summary}"</p>
+                        </div>
+                        <div className="text-right whitespace-nowrap">
+                          <p className="text-xs font-semibold text-rose-600 dark:text-rose-400">{badge.text}</p>
+                          <p className="text-xs text-slate-400 dark:text-slate-500">{formatDate(item.deadline)}</p>
+                        </div>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className={`h-4 w-4 shrink-0 text-slate-400 transition-transform dark:text-slate-500 ${expanded ? 'rotate-180' : ''}`}
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={2}
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+
+                      {expanded && (
+                        <div className="mt-3 space-y-3 border-t border-rose-100/70 pt-3 dark:border-white/10">
+                          {(item.tasks && item.tasks.length > 0) && (
+                            <div>
+                              <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 dark:text-slate-400">Detail Tugas:</h4>
+                              <ul className="list-disc list-inside text-sm text-slate-700 space-y-1 dark:text-slate-200">
+                                {item.tasks.map((task, idx) => (
+                                  <li key={idx}>{task}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          <div className="flex flex-wrap items-center gap-2">
+                            {item.priority && (
+                              <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${(item.priority || 'sedang') === 'kritis' ? 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-400' :
+                                (item.priority || 'sedang') === 'tinggi' ? 'bg-orange-100 text-orange-800 dark:bg-orange-500/15 dark:text-orange-400' :
+                                (item.priority || 'sedang') === 'rendah' ? 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-400' : 'bg-sky-100 text-sky-800 dark:bg-sky-500/15 dark:text-sky-400'
+                                }`}>
+                                {priorityLabels[(item.priority || 'sedang').toLowerCase()] || 'Sedang'}
+                              </span>
+                            )}
+                            {(item.tags || []).map(tag => (
+                              <span key={tag} className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300">
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </li>
                   );
                 })}
@@ -902,7 +1013,7 @@ export default function Home() {
             <h2 className="text-xl font-bold tracking-tight dark:text-slate-100">Dashboard / Tabel Progress</h2>
             <div className="flex items-center gap-2">
               <div className="flex rounded-lg border border-slate-300 overflow-hidden dark:border-slate-600">
-                {['cards', 'table'].map(v => (
+                {['cards', 'table', 'calendar'].map(v => (
                   <button
                     key={v}
                     type="button"
@@ -911,7 +1022,7 @@ export default function Home() {
                       view === v ? 'bg-indigo-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-800/60 dark:text-slate-300 dark:hover:bg-slate-700/60'
                     }`}
                   >
-                    {v === 'cards' ? 'Kartu' : 'Tabel'}
+                    {v === 'cards' ? 'Kartu' : v === 'table' ? 'Tabel' : 'Kalender'}
                   </button>
                 ))}
               </div>
@@ -1060,7 +1171,168 @@ export default function Home() {
             </div>
           </div>
 
-          {filteredHistory.length === 0 ? (
+          {view === 'calendar' ? (
+            <div className="rounded-xl border border-slate-200/70 bg-white/70 p-6 shadow-lg shadow-slate-200/50 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06] dark:shadow-black/20">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold tracking-tight dark:text-slate-100">Kalender Progress</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {calendarTaskCount} tugas terjadwal dari seluruh proyek.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => changeMonth(-1)}
+                    className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-600 transition-colors hover:bg-slate-200 dark:bg-white/10 dark:text-slate-300 dark:hover:bg-white/20"
+                    aria-label="Bulan sebelumnya"
+                  >
+                    ‹
+                  </button>
+                  <span className="min-w-[150px] text-center text-sm font-bold text-slate-700 dark:text-slate-200">{monthLabel}</span>
+                  <button
+                    type="button"
+                    onClick={() => changeMonth(1)}
+                    className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-600 transition-colors hover:bg-slate-200 dark:bg-white/10 dark:text-slate-300 dark:hover:bg-white/20"
+                    aria-label="Bulan berikutnya"
+                  >
+                    ›
+                  </button>
+                  <button
+                    type="button"
+                    onClick={goToToday}
+                    className="rounded-lg px-3 py-1.5 text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+                  >
+                    Hari Ini
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-5 grid grid-cols-7 gap-1.5 text-center">
+                {['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'].map(d => (
+                  <div key={d} className="py-1 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                    {d}
+                  </div>
+                ))}
+                {calendarWeeks.flat().map((cell, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    disabled={!cell.inMonth}
+                    onClick={() => cell.iso && setSelectedDay(cell.iso)}
+                    className={`relative min-h-[72px] rounded-lg p-1.5 text-left text-sm transition-colors ${
+                      !cell.inMonth
+                        ? 'pointer-events-none opacity-30'
+                        : cell.iso === todayStr
+                          ? 'bg-indigo-600 shadow-md'
+                          : selectedDay === cell.iso
+                            ? 'bg-indigo-50 ring-2 ring-indigo-400 dark:bg-indigo-500/20'
+                            : 'bg-slate-50 hover:bg-indigo-50 dark:bg-white/[0.04] dark:hover:bg-white/[0.08]'
+                    }`}
+                  >
+                    <span className={`font-medium ${cell.iso === todayStr ? 'text-white' : 'text-slate-700 dark:text-slate-200'}`}>
+                      {cell.dayNum}
+                    </span>
+                    <div className="mt-1 space-y-0.5">
+                      {(tasksByDate[cell.iso] || []).slice(0, 2).map(t => (
+                        <div key={t.id} className={`truncate rounded px-1 py-0.5 text-[10px] font-medium leading-tight ${statusChipClass(t.status)}`}>
+                          {t.project_name}
+                        </div>
+                      ))}
+                      {(tasksByDate[cell.iso] || []).length > 2 && (
+                        <div className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+                          +{(tasksByDate[cell.iso] || []).length - 2} lainnya
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {selectedTasks.length > 0 && (
+                <div className="mt-6">
+                  <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                    Tugas pada {formatDate(selectedDay)}
+                  </h4>
+                  <ul className="mt-3 space-y-2">
+                    {selectedTasks.map(item => {
+                      const isOpen = expandedId === item.id;
+                      return (
+                        <li
+                          key={item.id}
+                          className="rounded-xl border border-slate-200/70 bg-white/70 p-3 backdrop-blur-md dark:border-white/10 dark:bg-white/[0.06]"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => setExpandedId(isOpen ? null : item.id)}
+                            className="flex w-full items-center gap-3 text-left"
+                          >
+                            <span className="flex-1 truncate font-semibold text-indigo-600 dark:text-indigo-400">{item.project_name}</span>
+                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${statusChipClass(item.status)}`}>
+                              {item.status}
+                            </span>
+                            <span className="hidden text-xs text-slate-400 sm:inline dark:text-slate-500">
+                              Deadline: {formatDate(item.deadline)}
+                            </span>
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              className={`h-4 w-4 shrink-0 text-slate-400 transition-transform dark:text-slate-500 ${isOpen ? 'rotate-180' : ''}`}
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                              strokeWidth={2}
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
+                          {isOpen && (
+                            <div className="mt-2 space-y-2 border-t border-slate-200/70 pt-2 dark:border-white/10">
+                              {(item.tasks && item.tasks.length > 0) && (
+                                <ul className="list-disc list-inside text-sm text-slate-700 space-y-0.5 dark:text-slate-200">
+                                  {item.tasks.map((task, i) => (
+                                    <li key={i}>{task}</li>
+                                  ))}
+                                </ul>
+                              )}
+                              {item.summary && (
+                                <p className="text-xs italic text-slate-500 dark:text-slate-400">"{item.summary}"</p>
+                              )}
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${(item.priority || 'sedang') === 'kritis' ? 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-400' :
+                                  (item.priority || 'sedang') === 'tinggi' ? 'bg-orange-100 text-orange-800 dark:bg-orange-500/15 dark:text-orange-400' :
+                                  (item.priority || 'sedang') === 'rendah' ? 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-400' : 'bg-sky-100 text-sky-800 dark:bg-sky-500/15 dark:text-sky-400'
+                                  }`}>
+                                  {priorityLabels[(item.priority || 'sedang').toLowerCase()] || 'Sedang'}
+                                </span>
+                                {(item.tags || []).map(tag => (
+                                  <span key={tag} className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300">
+                                    {tag}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
+
+              {selectedDay && selectedTasks.length === 0 && (
+                <p className="mt-5 text-sm text-slate-500 dark:text-slate-400">
+                  Tidak ada tugas berdeadline pada {formatDate(selectedDay)}.
+                </p>
+              )}
+            </div>
+          ) : filteredHistory.length === 0 ? (
             <div className="rounded-xl border border-dashed border-slate-300 bg-white/70 p-8 text-center text-slate-500 backdrop-blur-xl dark:border-slate-600 dark:bg-white/[0.06] dark:text-slate-400">
               {history.length === 0
                 ? 'Belum ada catatan hari ini. Mulai ketik di atas!'
