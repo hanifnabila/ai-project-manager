@@ -58,6 +58,13 @@ export async function PATCH(request) {
       updates.priority = body.priority.toLowerCase();
     }
 
+    if (body.completed_tasks !== undefined) {
+      // Hanya string, keduplikatan dihilangkan
+      updates.completed_tasks = Array.isArray(body.completed_tasks)
+        ? [...new Set(body.completed_tasks.filter((t) => typeof t === 'string'))]
+        : [];
+    }
+
     if (body.deadline !== undefined) {
       updates.deadline =
         typeof body.deadline === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.deadline)

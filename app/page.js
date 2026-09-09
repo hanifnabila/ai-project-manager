@@ -6,6 +6,7 @@ import JadwalSection from '@/components/JadwalSection';
 import LockScreen from '@/components/LockScreen';
 import SecuritySettings from '@/components/SecuritySettings';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import SubTaskList from '@/components/SubTaskList';
 import { cacheRows, networkOrCache, enqueue, applyLocal, localUpsert, localSoftDelete, evictLocal } from '@/lib/offlineApi';
 import { isOnline, syncAll, pendingCount } from '@/lib/sync';
 
@@ -76,6 +77,7 @@ export default function Home() {
   const [completeTarget, setCompleteTarget] = useState(null);
   const [completingId, setCompletingId] = useState(null);
   const [completeError, setCompleteError] = useState('');
+  const [subtaskBusy, setSubtaskBusy] = useState('');
   const [theme, setTheme] = useState('system');
   const [expandedId, setExpandedId] = useState(null);
   const [calendarDate, setCalendarDate] = useState(() => {
@@ -360,6 +362,11 @@ export default function Home() {
     setEditLoading(true);
     setEditError('');
 
+    const newTasks = (editForm.tasks || '').split('\n').map((t) => t.trim()).filter(Boolean);
+    const prevRow = history.find((h) => h.id === editingId);
+    const prevCompleted = Array.isArray(prevRow?.completed_tasks) ? prevRow.completed_tasks : [];
+    const prunedCompleted = prevCompleted.filter((t) => newTasks.includes(t));
+
     if (!isOnline()) {
       try {
         const fields = {
@@ -367,9 +374,10 @@ export default function Home() {
           status: editForm.status,
           priority: (editForm.priority || 'sedang').toLowerCase(),
           summary: editForm.summary,
-          tasks: (editForm.tasks || '').split('\n').map((t) => t.trim()).filter(Boolean),
+          tasks: newTasks,
           tags: parseTags(editForm.tags),
           deadline: editForm.deadline || null,
+          completed_tasks: prunedCompleted,
         };
         await localUpsert('progress_logs', editingId, fields);
         await enqueue('progress_logs', '/api/progress', 'PATCH', { id: editingId, ...fields });
@@ -391,7 +399,7 @@ export default function Home() {
       const res = await fetch('/api/progress', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: editingId, ...editForm, tags: parseTags(editForm.tags) }),
+        body: JSON.stringify({ id: editingId, ...editForm, tags: parseTags(editForm.tags), completed_tasks: prunedCompleted }),
       });
 
       const result = await res.json();
@@ -457,6 +465,65 @@ export default function Home() {
     setCompleteTarget(null);
     setCompletingId(null);
     setCompleteError('');
+  };
+
+  const patchRowLocal = (id, fields) => {
+    setHistory((prev) => prev.map((r) => (r.id === id ? { ...r, ...fields } : r)));
+    setUpcomingDeadlines((prev) => prev.map((r) => (r.id === id ? { ...r, ...fields } : r)));
+  };
+
+  const toggleSubtask = async (item, task, done) => {
+    const key = `${item.id}|${task}`;
+    if (subtaskBusy === key) return;
+
+    const tasks = Array.isArray(item.tasks) ? item.tasks : [];
+    const completed = Array.isArray(item.completed_tasks) ? item.completed_tasks : [];
+    const next = done
+      ? [...new Set([...completed, task])]
+      : completed.filter((t) => t !== task);
+    if (next.length === completed.length && next.every((t, i) => t === completed[i])) return;
+
+    const fields = { completed_tasks: next };
+    if (!done && item.status === 'Completed') fields.status = 'In Progress';
+
+    setSubtaskBusy(key);
+    try {
+      if (!isOnline()) {
+        await localUpsert('progress_logs', item.id, fields);
+        await enqueue('progress_logs', '/api/progress', 'PATCH', { id: item.id, ...fields });
+        patchRowLocal(item.id, fields);
+        setOffline(true);
+        await refreshPending();
+      } else {
+        const res = await fetch('/api/progress', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: item.id, ...fields }),
+        });
+        const result = await res.json();
+        if (!result.success) throw new Error(result.error);
+        const updated = Array.isArray(result.data) ? result.data[0] : result.data;
+        if (updated) {
+          await applyLocal('progress_logs', updated);
+          patchRowLocal(item.id, {
+            ...(typeof updated.completed_tasks !== 'undefined' ? { completed_tasks: updated.completed_tasks } : {}),
+            ...(typeof updated.status !== 'undefined' ? { status: updated.status } : {}),
+          });
+        } else {
+          patchRowLocal(item.id, fields);
+        }
+      }
+    } catch (err) {
+      window.alert(`Gagal menyimpan progres: ${err.message}`);
+    } finally {
+      setSubtaskBusy('');
+    }
+
+    // Auto-complete: semua sub-tugas selesai → konfirmasi ringan lewat modal
+    const allDone = tasks.length > 0 && tasks.every((t) => next.includes(t));
+    if (done && allDone && item.status !== 'Completed') {
+      openCompleteModal({ ...item, completed_tasks: next, status: item.status });
+    }
   };
 
   const confirmComplete = async () => {
@@ -1108,16 +1175,7 @@ export default function Home() {
 
                       {expanded && (
                         <div className="mt-3 space-y-3 border-t border-rose-100/70 pt-3 dark:border-white/10">
-                          {(item.tasks && item.tasks.length > 0) && (
-                            <div>
-                              <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 dark:text-slate-400">Detail Tugas:</h4>
-                              <ul className="list-disc list-inside text-sm text-slate-700 space-y-1 dark:text-slate-200">
-                                {item.tasks.map((task, idx) => (
-                                  <li key={idx}>{task}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
+                          <SubTaskList item={item} onToggle={toggleSubtask} busyKey={subtaskBusy} />
 
                           <div className="flex flex-wrap items-center gap-2">
                             {item.priority && (
@@ -1643,13 +1701,7 @@ export default function Home() {
                           </button>
                           {isOpen && (
                             <div className="mt-2 space-y-2 border-t border-slate-200/70 pt-2 dark:border-white/10">
-                              {(item.tasks && item.tasks.length > 0) && (
-                                <ul className="list-disc list-inside text-sm text-slate-700 space-y-0.5 dark:text-slate-200">
-                                  {item.tasks.map((task, i) => (
-                                    <li key={i}>{task}</li>
-                                  ))}
-                                </ul>
-                              )}
+                              <SubTaskList item={item} onToggle={toggleSubtask} busyKey={subtaskBusy} />
                               {item.summary && (
                                 <p className="text-xs italic text-slate-500 dark:text-slate-400">"{item.summary}"</p>
                               )}
@@ -1844,14 +1896,7 @@ export default function Home() {
                       </div>
                     )}
 
-                    <div>
-                      <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 dark:text-slate-400">Detail Tugas:</h4>
-                      <ul className="list-disc list-inside text-sm text-slate-700 space-y-1 dark:text-slate-200">
-                        {item.tasks.map((task, idx) => (
-                          <li key={idx}>{task}</li>
-                        ))}
-                      </ul>
-                    </div>
+                    <SubTaskList item={item} onToggle={toggleSubtask} busyKey={subtaskBusy} />
 
                     <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-100">
                       {item.status !== 'Completed' && (
@@ -1960,6 +2005,17 @@ export default function Home() {
                       Deadline: {formatDate(completeTarget.deadline)} ({deadlineBadge(completeTarget.deadline)?.text})
                     </p>
                   )}
+                  {(() => {
+                    const subs = Array.isArray(completeTarget.tasks) ? completeTarget.tasks : [];
+                    const comp = Array.isArray(completeTarget.completed_tasks) ? completeTarget.completed_tasks : [];
+                    if (subs.length === 0) return null;
+                    const n = subs.filter((t) => comp.includes(t)).length;
+                    return (
+                      <p className="mt-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                        Sub-tugas selesai {n}/{subs.length}
+                      </p>
+                    );
+                  })()}
                 </div>
 
                 {completeError && <p className="mt-3 text-sm text-red-600 dark:text-red-400">{completeError}</p>}
