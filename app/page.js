@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Fragment } from 'react';
 import { supabase } from '@/lib/supabase';
+import JadwalSection from '@/components/JadwalSection';
 
 export default function Home() {
   const [rawText, setRawText] = useState('');
@@ -51,6 +52,7 @@ export default function Home() {
     return d;
   });
   const [selectedDay, setSelectedDay] = useState(null);
+  const [activeTab, setActiveTabState] = useState('dashboard');
 
   const PRIORITY_OPTIONS = [
     { value: 'rendah', label: 'Rendah' },
@@ -88,6 +90,23 @@ export default function Home() {
     document.documentElement.classList.toggle('dark', next === 'dark');
     setTheme(next);
   };
+
+  const switchTab = (tab) => {
+    setActiveTabState(tab);
+    if (typeof window !== 'undefined') {
+      window.location.hash = tab === 'jadwal' ? 'jadwal' : '';
+      window.scrollTo(0, 0);
+    }
+  };
+
+  useEffect(() => {
+    const syncFromHash = () => {
+      setActiveTabState(window.location.hash === '#jadwal' ? 'jadwal' : 'dashboard');
+    };
+    syncFromHash();
+    window.addEventListener('hashchange', syncFromHash);
+    return () => window.removeEventListener('hashchange', syncFromHash);
+  }, []);
 
   // Reset halaman ke 1 saat filter / pencarian / urutan berubah
   useEffect(() => {
@@ -648,20 +667,44 @@ export default function Home() {
 
       {/* Navbar */}
       <header className="sticky top-0 z-40 border-b border-slate-200/60 bg-white/60 backdrop-blur-xl dark:border-white/10 dark:bg-white/10">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
           <div className="flex min-w-0 flex-1 items-center gap-3">
             <img
               src="/icons/logo.png"
               alt="Logo AI Project Manager"
-              className="h-10 w-10 shrink-0 rounded-lg object-cover ring-2 ring-indigo-100 dark:ring-white/20"
+              className="h-9 w-9 shrink-0 rounded-lg object-cover ring-2 ring-indigo-100 dark:ring-white/20 sm:h-10 sm:w-10"
             />
             <div className="min-w-0 leading-tight">
-              <p className="truncate font-extrabold tracking-tight">AI Project Manager</p>
-              <p className="hidden truncate text-xs text-slate-500 sm:block dark:text-slate-400">Kelola progres proyek dengan bantuan AI</p>
+              <p className="truncate font-extrabold tracking-tight sm:text-lg">AI Project Manager</p>
+              <p className="hidden truncate text-xs text-slate-500 md:block dark:text-slate-400">Kelola progres proyek dengan bantuan AI</p>
             </div>
           </div>
+
+          <nav
+            className="order-last flex w-full justify-center sm:order-none sm:w-auto sm:flex-none"
+            aria-label="Navigasi utama"
+          >
+            <div className="flex rounded-xl border border-slate-200/60 bg-white/60 p-1 backdrop-blur dark:border-white/10 dark:bg-white/10">
+              {[['dashboard', 'Beranda'], ['jadwal', 'Jadwal']].map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => switchTab(key)}
+                  aria-current={activeTab === key ? 'page' : undefined}
+                  className={`rounded-lg px-4 py-1.5 text-sm font-semibold transition-colors sm:px-5 ${
+                    activeTab === key
+                      ? 'bg-indigo-600 text-white shadow'
+                      : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </nav>
+
           <div className="flex shrink-0 items-center gap-2">
-            <div className="hidden items-center gap-2 rounded-full bg-white/60 px-4 py-1.5 text-sm font-medium text-slate-600 backdrop-blur dark:bg-white/10 dark:text-slate-300 sm:flex">
+            <div className="hidden items-center gap-2 rounded-full bg-white/60 px-4 py-1.5 text-sm font-medium text-slate-600 backdrop-blur dark:bg-white/10 dark:text-slate-300 lg:flex">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
@@ -691,6 +734,8 @@ export default function Home() {
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:py-10">
         <div className="space-y-8">
 
+          {activeTab === 'dashboard' && (
+            <>
           {/* Hero */}
           <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-700 via-indigo-600 to-violet-700 p-6 text-white shadow-xl sm:p-10">
             <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-white/10 blur-2xl" />
@@ -1611,6 +1656,10 @@ export default function Home() {
             </div>
           )}
         </div>
+            </>
+          )}
+
+          {activeTab === 'jadwal' && <JadwalSection />}
 
           {/* Modal Konfirmasi Selesai */}
           {completeTarget && (
