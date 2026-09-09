@@ -308,6 +308,11 @@ export default function LockScreen({ onUnlocked }) {
                 <p className="text-sm text-[#22ff6e]/90">
                   SECURITY PROTOCOL NOT CONFIGURED. REGISTER AT LEAST ONE METHOD:
                 </p>
+                {setupState?.online === false && (
+                  <p className="rounded border border-amber-400/40 p-2 text-xs text-amber-400">
+                    OFFLINE -- BUTUH KONEKSI SEKALI UNTUK REGISTER KE DATABASE.
+                  </p>
+                )}
 
                 {bioSupported && (
                   <div className="flex items-center justify-between gap-3 rounded border border-[#22ff6e]/30 p-3">
