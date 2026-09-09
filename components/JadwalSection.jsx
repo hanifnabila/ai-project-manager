@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { supabase } from '@/lib/supabase';
 import { cacheRows, networkOrCache, enqueue, applyLocal, localUpsert, localSoftDelete } from '@/lib/offlineApi';
 import { isOnline } from '@/lib/sync';
+import ConfirmDialog from '@/components/ConfirmDialog';
 
 const DAY_NAMES = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
 const PERIOD_LABELS = { harian: 'Harian', mingguan: 'Mingguan', bulanan: 'Bulanan', sekali: 'Sekali' };
@@ -57,6 +58,7 @@ export default function JadwalSection() {
   const [formError, setFormError] = useState('');
   const [savingLogKey, setSavingLogKey] = useState('');
   const [deletingId, setDeletingId] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [loadError, setLoadError] = useState('');
 
   const todayISO = toISODate(new Date());
@@ -283,7 +285,6 @@ export default function JadwalSection() {
   };
 
   const deleteActivity = async (id) => {
-    if (!window.confirm('Hapus kegiatan ini? Riwayat checklist ikut terhapus.')) return;
     setDeletingId(id);
     try {
       if (!isOnline()) {
@@ -307,6 +308,7 @@ export default function JadwalSection() {
       setError(err.message);
     } finally {
       setDeletingId('');
+      setConfirmDeleteId(null);
     }
   };
 
@@ -407,7 +409,7 @@ export default function JadwalSection() {
           </button>
           <button
             type="button"
-            onClick={() => deleteActivity(activity.id)}
+            onClick={() => setConfirmDeleteId(activity.id)}
             disabled={deletingId === activity.id}
             title="Hapus kegiatan"
             className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-100 text-red-700 transition-colors hover:bg-red-200 disabled:opacity-50 sm:h-7 sm:w-7 dark:bg-red-500/15 dark:text-red-300 dark:hover:bg-red-500/25"
@@ -863,6 +865,15 @@ export default function JadwalSection() {
           </div>,
           document.body
         )}
+
+      <ConfirmDialog
+        open={!!confirmDeleteId}
+        title="Hapus kegiatan?"
+        message="Kegiatan ini beserta riwayat checklistnya akan dihapus permanen. Tindakan tidak dapat dibatalkan."
+        busy={!!deletingId}
+        onCancel={() => setConfirmDeleteId(null)}
+        onConfirm={() => confirmDeleteId && deleteActivity(confirmDeleteId)}
+      />
     </section>
   );
 }

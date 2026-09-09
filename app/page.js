@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import JadwalSection from '@/components/JadwalSection';
 import LockScreen from '@/components/LockScreen';
 import SecuritySettings from '@/components/SecuritySettings';
+import ConfirmDialog from '@/components/ConfirmDialog';
 import { cacheRows, networkOrCache, enqueue, applyLocal, localUpsert, localSoftDelete } from '@/lib/offlineApi';
 import { isOnline, syncAll, pendingCount } from '@/lib/sync';
 
@@ -69,6 +70,7 @@ export default function Home() {
   const [editError, setEditError] = useState('');
   const [editLoading, setEditLoading] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [upcomingDeadlines, setUpcomingDeadlines] = useState([]);
   const [deadlineError] = useState('');
   const [completeTarget, setCompleteTarget] = useState(null);
@@ -405,8 +407,6 @@ export default function Home() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Hapus catatan ini? Tindakan tidak dapat dibatalkan.')) return;
-
     setDeletingId(id);
     if (!isOnline()) {
       try {
@@ -442,6 +442,7 @@ export default function Home() {
       window.alert(`Gagal menghapus: ${err.message}`);
     } finally {
       setDeletingId(null);
+      setConfirmDeleteId(null);
     }
   };
 
@@ -1772,7 +1773,7 @@ export default function Home() {
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => handleDelete(row.id)}
+                                  onClick={() => setConfirmDeleteId(row.id)}
                                   disabled={deletingId === row.id}
                                   className="px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors disabled:opacity-50 dark:bg-red-500/15 dark:text-red-300 dark:hover:bg-red-500/25"
                                 >
@@ -1869,7 +1870,7 @@ export default function Home() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleDelete(item.id)}
+                        onClick={() => setConfirmDeleteId(item.id)}
                         disabled={deletingId === item.id}
                         className="px-3 py-1.5 rounded-lg text-sm font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors disabled:opacity-50 dark:bg-red-500/15 dark:text-red-300 dark:hover:bg-red-500/25"
                       >
@@ -1990,6 +1991,15 @@ export default function Home() {
       </main>
 
       <SecuritySettings open={securityOpen} onClose={() => setSecurityOpen(false)} />
+
+      <ConfirmDialog
+        open={!!confirmDeleteId}
+        title="Hapus catatan?"
+        message="Catatan ini akan dihapus permanen. Tindakan tidak dapat dibatalkan."
+        busy={!!deletingId}
+        onCancel={() => setConfirmDeleteId(null)}
+        onConfirm={() => confirmDeleteId && handleDelete(confirmDeleteId)}
+      />
     </div>
   );
 }
