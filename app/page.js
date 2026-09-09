@@ -42,6 +42,7 @@ export default function Home() {
   const [completeTarget, setCompleteTarget] = useState(null);
   const [completingId, setCompletingId] = useState(null);
   const [completeError, setCompleteError] = useState('');
+  const [theme, setTheme] = useState('system');
 
   const PRIORITY_OPTIONS = [
     { value: 'rendah', label: 'Rendah' },
@@ -55,6 +56,30 @@ export default function Home() {
     fetchHistory();
     fetchDeadlines();
   }, []);
+
+  // Tema: auto-mengikuti sistem, bisa di-toggle oleh pengguna (disimpan di localStorage)
+  useEffect(() => {
+    const stored = localStorage.getItem('theme') || 'system';
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const apply = (mode) => {
+      document.documentElement.classList.toggle(
+        'dark',
+        mode === 'dark' || (mode === 'system' && mq.matches)
+      );
+    };
+    apply(stored);
+    setTheme(stored);
+    const handler = () => apply(stored);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    localStorage.setItem('theme', next);
+    document.documentElement.classList.toggle('dark', next === 'dark');
+    setTheme(next);
+  };
 
   // Reset halaman ke 1 saat filter / pencarian / urutan berubah
   useEffect(() => {
@@ -449,30 +474,30 @@ export default function Home() {
   const editFormJsx = (
     <form onSubmit={saveEdit} className="space-y-3">
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1">Nama Proyek</label>
+        <label className="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Nama Proyek</label>
         <input
           type="text"
           value={editForm.project_name}
           onChange={(e) => setEditForm({ ...editForm, project_name: e.target.value })}
-          className="w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+          className="w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-slate-600 dark:bg-slate-800/60 dark:text-slate-100 dark:placeholder-slate-400"
           required
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1">Tugas (satu per baris)</label>
+        <label className="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Tugas (satu per baris)</label>
         <textarea
           rows={3}
           value={editForm.tasks}
           onChange={(e) => setEditForm({ ...editForm, tasks: e.target.value })}
-          className="w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+          className="w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-slate-600 dark:bg-slate-800/60 dark:text-slate-100 dark:placeholder-slate-400"
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
+        <label className="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Status</label>
         <select
           value={editForm.status}
           onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-          className="w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
+          className="w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white dark:border-slate-600 dark:bg-slate-800/60 dark:text-slate-100"
         >
           {['In Progress', 'Completed', 'Blocked'].map(s => (
             <option key={s} value={s}>{s}</option>
@@ -480,11 +505,11 @@ export default function Home() {
         </select>
       </div>
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1">Prioritas</label>
+        <label className="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Prioritas</label>
         <select
           value={editForm.priority}
           onChange={(e) => setEditForm({ ...editForm, priority: e.target.value })}
-          className="w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
+          className="w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white dark:border-slate-600 dark:bg-slate-800/60 dark:text-slate-100"
         >
           {PRIORITY_OPTIONS.map(o => (
             <option key={o.value} value={o.value}>{o.label}</option>
@@ -492,36 +517,36 @@ export default function Home() {
         </select>
       </div>
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1">Deadline</label>
+        <label className="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Deadline</label>
         <input
           type="date"
           value={editForm.deadline}
           onChange={(e) => setEditForm({ ...editForm, deadline: e.target.value })}
-          className="w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
+          className="w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white dark:border-slate-600 dark:bg-slate-800/60 dark:text-slate-100"
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1">Ringkasan</label>
+        <label className="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Ringkasan</label>
         <input
           type="text"
           value={editForm.summary}
           onChange={(e) => setEditForm({ ...editForm, summary: e.target.value })}
-          className="w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+          className="w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-slate-600 dark:bg-slate-800/60 dark:text-slate-100 dark:placeholder-slate-400"
           required
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1">Tag / Label (pisahkan dengan koma)</label>
+        <label className="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Tag / Label (pisahkan dengan koma)</label>
         <input
           type="text"
           value={editForm.tags}
           onChange={(e) => setEditForm({ ...editForm, tags: e.target.value })}
           placeholder="Contoh: Backend, Sistem Absensi, PT Klien"
-          className="w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+          className="w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-slate-600 dark:bg-slate-800/60 dark:text-slate-100 dark:placeholder-slate-400"
         />
       </div>
 
-      {editError && <p className="text-sm text-red-600">{editError}</p>}
+      {editError && <p className="text-sm text-red-600 dark:text-red-400">{editError}</p>}
 
       <div className="flex gap-2">
         <button
@@ -534,7 +559,7 @@ export default function Home() {
         <button
           type="button"
           onClick={cancelEdit}
-          className="px-4 py-2 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 font-medium transition-colors"
+          className="px-4 py-2 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 font-medium transition-colors dark:bg-white/10 dark:text-slate-300 dark:hover:bg-white/20"
         >
           Batal
         </button>
@@ -543,26 +568,52 @@ export default function Home() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900">
+    <div className="min-h-screen bg-slate-100 text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-100">
+      {/* Latar dekoratif aurora */}
+      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+        <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-indigo-300/40 blur-3xl dark:bg-indigo-600/20" />
+        <div className="absolute -right-24 top-1/3 h-96 w-96 rounded-full bg-violet-300/40 blur-3xl dark:bg-violet-600/20" />
+        <div className="absolute -bottom-40 left-1/4 h-96 w-96 rounded-full bg-sky-300/30 blur-3xl dark:bg-sky-600/15" />
+      </div>
+
       {/* Navbar */}
-      <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/80 backdrop-blur">
+      <header className="sticky top-0 z-40 border-b border-slate-200/60 bg-white/60 backdrop-blur-xl dark:border-white/10 dark:bg-white/10">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <div className="flex items-center gap-3">
             <img
               src="/icons/logo.png"
               alt="Logo AI Project Manager"
-              className="h-10 w-10 rounded-lg object-cover ring-2 ring-indigo-100"
+              className="h-10 w-10 rounded-lg object-cover ring-2 ring-indigo-100 dark:ring-white/20"
             />
             <div className="leading-tight">
               <p className="font-extrabold tracking-tight">AI Project Manager</p>
-              <p className="text-xs text-slate-500">Kelola progres proyek dengan bantuan AI</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Kelola progres proyek dengan bantuan AI</p>
             </div>
           </div>
-          <div className="hidden items-center gap-2 rounded-full bg-slate-100 px-4 py-1.5 text-sm font-medium text-slate-600 sm:flex">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+          <div className="flex items-center gap-2">
+            <div className="hidden items-center gap-2 rounded-full bg-white/60 px-4 py-1.5 text-sm font-medium text-slate-600 backdrop-blur dark:bg-white/10 dark:text-slate-300 sm:flex">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            </div>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              title={theme === 'dark' ? 'Mode terang' : 'Mode gelap'}
+              aria-label="Ganti tema terang/gelap"
+              className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/60 text-slate-600 shadow-sm ring-1 ring-slate-200/60 backdrop-blur transition-all hover:scale-105 hover:text-indigo-600 dark:bg-white/10 dark:text-slate-300 dark:ring-white/10 dark:hover:text-amber-300"
+            >
+              {theme === 'dark' ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+              )}
+            </button>
           </div>
         </div>
       </header>
@@ -611,7 +662,7 @@ export default function Home() {
 
           {/* Deadline Terdekat */}
           {upcomingDeadlines.length > 0 && (
-            <section className="rounded-2xl border border-rose-200 bg-gradient-to-br from-rose-50 via-white to-amber-50 p-6 shadow-sm sm:p-8">
+            <section className="rounded-2xl border border-rose-200/70 bg-white/60 p-6 shadow-lg shadow-rose-100/50 backdrop-blur-xl dark:border-rose-300/20 dark:bg-white/[0.06] dark:shadow-black/20 sm:p-8">
               <div className="flex flex-wrap items-center gap-3">
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-600 text-white shadow-md">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -619,8 +670,8 @@ export default function Home() {
                   </svg>
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h2 className="text-xl font-extrabold tracking-tight text-rose-900">Deadline Terdekat</h2>
-                  <p className="text-sm text-rose-700">
+                  <h2 className="text-xl font-extrabold tracking-tight text-rose-900 dark:text-rose-100">Deadline Terdekat</h2>
+                  <p className="text-sm text-rose-700 dark:text-rose-300">
                     5 tugas teratas yang belum selesai dan paling mendekati tenggat waktunya.
                   </p>
                 </div>
@@ -629,26 +680,26 @@ export default function Home() {
                 </span>
               </div>
 
-              {deadlineError && <p className="mt-3 text-sm text-red-600">{deadlineError}</p>}
+              {deadlineError && <p className="mt-3 text-sm text-red-600 dark:text-red-400">{deadlineError}</p>}
 
               <ul className="mt-5 space-y-3">
                 {upcomingDeadlines.map((item) => {
-                  const badge = deadlineBadge(item.deadline) || { text: '-', cls: 'bg-slate-100 text-slate-600' };
+                  const badge = deadlineBadge(item.deadline) || { text: '-', cls: 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-400' };
                   return (
                     <li
                       key={item.id}
-                      className="flex items-center gap-4 rounded-xl border border-rose-100 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
+                      className="flex items-center gap-4 rounded-xl border border-rose-100/70 bg-white/70 p-4 shadow-sm backdrop-blur-md transition-shadow hover:shadow-md dark:border-white/10 dark:bg-white/[0.06]"
                     >
                       <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-base font-bold ${badge.cls}`}>
                         {daysUntil(item.deadline)}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate font-semibold text-slate-800">{item.project_name}</p>
-                        <p className="truncate text-xs text-slate-500">"{item.summary}"</p>
+                        <p className="truncate font-semibold text-slate-800 dark:text-slate-100">{item.project_name}</p>
+                        <p className="truncate text-xs text-slate-500 dark:text-slate-400">"{item.summary}"</p>
                       </div>
                       <div className="text-right whitespace-nowrap">
-                        <p className="text-xs font-semibold text-rose-600">{badge.text}</p>
-                        <p className="text-xs text-slate-400">{formatDate(item.deadline)}</p>
+                        <p className="text-xs font-semibold text-rose-600 dark:text-rose-400">{badge.text}</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500">{formatDate(item.deadline)}</p>
                       </div>
                     </li>
                   );
@@ -658,10 +709,10 @@ export default function Home() {
           )}
 
         {/* Input Form */}
-        <div className="bg-white shadow-sm border border-slate-200 rounded-xl p-6">
+        <div className="rounded-xl border border-slate-200/70 bg-white/70 p-6 shadow-lg shadow-slate-200/50 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06] dark:shadow-black/20">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="rawText" className="block text-sm font-medium text-slate-700 mb-1">
+              <label htmlFor="rawText" className="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">
                 Catatan / Progress Hari Ini
               </label>
               <textarea
@@ -670,12 +721,12 @@ export default function Home() {
                 value={rawText}
                 onChange={(e) => setRawText(e.target.value)}
                 placeholder="Contoh: Tadi pagi bereskan migrasi tabel database siswa untuk project sistem absensi, terus sorenya lanjut debugging API login NestJS..."
-                className="w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                className="w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-slate-600 dark:bg-slate-800/60 dark:text-slate-100 dark:placeholder-slate-400"
                 required
               />
             </div>
 
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
             <button
               type="submit"
@@ -688,7 +739,7 @@ export default function Home() {
             <button
               type="button"
               onClick={() => setManualOpen(v => !v)}
-              className="w-full text-sm text-slate-500 hover:text-indigo-600"
+              className="w-full text-sm text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400"
             >
               {manualOpen ? '− Sembunyikan Form Input Manual' : '＋ Atau input manual (tanpa AI)'}
             </button>
@@ -697,14 +748,14 @@ export default function Home() {
 
         {/* Form Input Manual (fallback saat AI error / kuota habis) */}
         {manualOpen && (
-          <div className="bg-amber-50 shadow-sm border border-amber-300 rounded-xl p-6">
-            <h2 className="text-lg font-bold tracking-tight text-amber-900">Input Progress Manual</h2>
-            <p className="mt-1 text-sm text-amber-800">
+          <div className="rounded-xl border border-amber-300/60 bg-amber-50/70 p-6 shadow-lg shadow-amber-100/50 backdrop-blur-xl dark:border-amber-300/20 dark:bg-amber-500/[0.07] dark:shadow-black/20">
+            <h2 className="text-lg font-bold tracking-tight text-amber-900 dark:text-amber-100">Input Progress Manual</h2>
+            <p className="mt-1 text-sm text-amber-800 dark:text-amber-200">
               Input langsung sesuai kolom tabel (Proyek, Tugas, Status, Ringkasan) tanpa AI.
             </p>
             <form onSubmit={handleManualSubmit} className="mt-4 space-y-4">
               <div>
-                <label htmlFor="manualProject" className="block text-sm font-medium text-amber-900 mb-1">
+                <label htmlFor="manualProject" className="block text-sm font-medium text-amber-900 mb-1 dark:text-amber-200">
                   Nama Proyek
                 </label>
                 <input
@@ -713,13 +764,13 @@ export default function Home() {
                   value={manualForm.project_name}
                   onChange={(e) => setManualForm({ ...manualForm, project_name: e.target.value })}
                   placeholder="Contoh: Sistem Absensi"
-                  className="w-full rounded-lg border border-amber-300 p-3 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                  className="w-full rounded-lg border border-amber-300 p-3 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none dark:border-amber-400/40 dark:bg-slate-800/60 dark:text-amber-50 dark:placeholder-amber-200/50"
                   required
                 />
               </div>
 
               <div>
-                <label htmlFor="manualTasks" className="block text-sm font-medium text-amber-900 mb-1">
+                <label htmlFor="manualTasks" className="block text-sm font-medium text-amber-900 mb-1 dark:text-amber-200">
                   Tugas (satu per baris)
                 </label>
                 <textarea
@@ -728,19 +779,19 @@ export default function Home() {
                   value={manualForm.tasks}
                   onChange={(e) => setManualForm({ ...manualForm, tasks: e.target.value })}
                   placeholder={'Migrasi tabel database siswa\nDebugging API login'}
-                  className="w-full rounded-lg border border-amber-300 p-3 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                  className="w-full rounded-lg border border-amber-300 p-3 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none dark:border-amber-400/40 dark:bg-slate-800/60 dark:text-amber-50 dark:placeholder-amber-200/50"
                 />
               </div>
 
               <div>
-                <label htmlFor="manualStatus" className="block text-sm font-medium text-amber-900 mb-1">
+                <label htmlFor="manualStatus" className="block text-sm font-medium text-amber-900 mb-1 dark:text-amber-200">
                   Status
                 </label>
                 <select
                   id="manualStatus"
                   value={manualForm.status}
                   onChange={(e) => setManualForm({ ...manualForm, status: e.target.value })}
-                  className="w-full rounded-lg border border-amber-300 p-3 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white"
+                  className="w-full rounded-lg border border-amber-300 p-3 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white dark:border-amber-400/40 dark:bg-slate-800/60 dark:text-amber-50"
                 >
                   {['In Progress', 'Completed', 'Blocked'].map(s => (
                     <option key={s} value={s}>{s}</option>
@@ -749,14 +800,14 @@ export default function Home() {
               </div>
 
               <div>
-                <label htmlFor="manualPriority" className="block text-sm font-medium text-amber-900 mb-1">
+                <label htmlFor="manualPriority" className="block text-sm font-medium text-amber-900 mb-1 dark:text-amber-200">
                   Prioritas
                 </label>
                 <select
                   id="manualPriority"
                   value={manualForm.priority}
                   onChange={(e) => setManualForm({ ...manualForm, priority: e.target.value })}
-                  className="w-full rounded-lg border border-amber-300 p-3 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white"
+                  className="w-full rounded-lg border border-amber-300 p-3 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white dark:border-amber-400/40 dark:bg-slate-800/60 dark:text-amber-50"
                 >
                   {PRIORITY_OPTIONS.map(o => (
                     <option key={o.value} value={o.value}>{o.label}</option>
@@ -765,7 +816,7 @@ export default function Home() {
               </div>
 
               <div>
-                <label htmlFor="manualDeadline" className="block text-sm font-medium text-amber-900 mb-1">
+                <label htmlFor="manualDeadline" className="block text-sm font-medium text-amber-900 mb-1 dark:text-amber-200">
                   Deadline (opsional)
                 </label>
                 <input
@@ -773,12 +824,12 @@ export default function Home() {
                   type="date"
                   value={manualForm.deadline}
                   onChange={(e) => setManualForm({ ...manualForm, deadline: e.target.value })}
-                  className="w-full rounded-lg border border-amber-300 p-3 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white"
+                  className="w-full rounded-lg border border-amber-300 p-3 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white dark:border-amber-400/40 dark:bg-slate-800/60 dark:text-amber-50"
                 />
               </div>
 
               <div>
-                <label htmlFor="manualSummary" className="block text-sm font-medium text-amber-900 mb-1">
+                <label htmlFor="manualSummary" className="block text-sm font-medium text-amber-900 mb-1 dark:text-amber-200">
                   Ringkasan
                 </label>
                 <input
@@ -787,13 +838,13 @@ export default function Home() {
                   value={manualForm.summary}
                   onChange={(e) => setManualForm({ ...manualForm, summary: e.target.value })}
                   placeholder="Contoh: Selesai migrasi database siswa"
-                  className="w-full rounded-lg border border-amber-300 p-3 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                  className="w-full rounded-lg border border-amber-300 p-3 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none dark:border-amber-400/40 dark:bg-slate-800/60 dark:text-amber-50 dark:placeholder-amber-200/50"
                   required
                 />
               </div>
 
               <div>
-                <label htmlFor="manualTags" className="block text-sm font-medium text-amber-900 mb-1">
+                <label htmlFor="manualTags" className="block text-sm font-medium text-amber-900 mb-1 dark:text-amber-200">
                   Tag / Label (pisahkan dengan koma)
                 </label>
                 <input
@@ -802,11 +853,11 @@ export default function Home() {
                   value={manualForm.tags}
                   onChange={(e) => setManualForm({ ...manualForm, tags: e.target.value })}
                   placeholder="Contoh: Backend, Sistem Absensi, PT Klien"
-                  className="w-full rounded-lg border border-amber-300 p-3 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                  className="w-full rounded-lg border border-amber-300 p-3 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none dark:border-amber-400/40 dark:bg-slate-800/60 dark:text-amber-50 dark:placeholder-amber-200/50"
                 />
               </div>
 
-              {manualError && <p className="text-sm text-red-600">{manualError}</p>}
+              {manualError && <p className="text-sm text-red-600 dark:text-red-400">{manualError}</p>}
 
               <button
                 type="submit"
@@ -819,10 +870,10 @@ export default function Home() {
           </div>
         )}
 
-        {/* Ringkasan Mingguan */}
-        <div className="bg-white shadow-sm border border-indigo-200 rounded-xl p-6">
-          <h2 className="text-xl font-bold tracking-tight">Ringkasan Mingguan</h2>
-          <p className="mt-1 text-sm text-slate-600">
+{/* Ringkasan Mingguan */}
+        <div className="rounded-xl border border-indigo-200/70 bg-white/70 p-6 shadow-lg shadow-indigo-100/50 backdrop-blur-xl dark:border-indigo-300/20 dark:bg-white/[0.06] dark:shadow-black/20">
+          <h2 className="text-xl font-bold tracking-tight dark:text-slate-100">Ringkasan Mingguan</h2>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
             AI akan merangkum seluruh progress, pencapaian, kendala, dan rencana minggu depan dari data 7 hari terakhir.
           </p>
           <button
@@ -834,11 +885,11 @@ export default function Home() {
             {recapLoading ? 'AI Sedang Menyusun Ringkasan...' : 'Buat Ringkasan Mingguan'}
           </button>
 
-          {recapError && <p className="mt-3 text-sm text-red-600">{recapError}</p>}
+          {recapError && <p className="mt-3 text-sm text-red-600 dark:text-red-400">{recapError}</p>}
 
           {recap && (
-            <div className="mt-5 rounded-lg bg-slate-50 border border-slate-200 p-5">
-              <div className="prose prose-sm max-w-none whitespace-pre-line text-sm text-slate-800">
+            <div className="mt-5 rounded-lg bg-white/60 border border-slate-200 p-5 backdrop-blur-md dark:border-white/10 dark:bg-slate-800/50">
+              <div className="prose prose-sm max-w-none whitespace-pre-line text-sm text-slate-800 dark:text-slate-200">
                 {recap}
               </div>
             </div>
@@ -848,16 +899,16 @@ export default function Home() {
         {/* Hasil Rekap / Riwayat */}
         <div className="space-y-4">
           <div className="flex justify-between items-center flex-wrap gap-2">
-            <h2 className="text-xl font-bold tracking-tight">Dashboard / Tabel Progress</h2>
+            <h2 className="text-xl font-bold tracking-tight dark:text-slate-100">Dashboard / Tabel Progress</h2>
             <div className="flex items-center gap-2">
-              <div className="flex rounded-lg border border-slate-300 overflow-hidden">
+              <div className="flex rounded-lg border border-slate-300 overflow-hidden dark:border-slate-600">
                 {['cards', 'table'].map(v => (
                   <button
                     key={v}
                     type="button"
                     onClick={() => setView(v)}
                     className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-                      view === v ? 'bg-indigo-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'
+                      view === v ? 'bg-indigo-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-800/60 dark:text-slate-300 dark:hover:bg-slate-700/60'
                     }`}
                   >
                     {v === 'cards' ? 'Kartu' : 'Tabel'}
@@ -871,7 +922,7 @@ export default function Home() {
                 title={todayHistory.length === 0 ? 'Belum ada catatan hari ini' : 'Unduh riwayat hari ini sebagai file .md'}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                   todayHistory.length === 0
-                    ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                    ? 'bg-slate-100 text-slate-400 cursor-not-allowed dark:bg-white/10 dark:text-slate-500'
                     : 'bg-indigo-600 text-white hover:bg-indigo-700'
                 }`}
               >
@@ -881,13 +932,13 @@ export default function Home() {
           </div>
 
           {/* Filter & Pencarian */}
-          <div className="bg-white shadow-sm border border-slate-200 rounded-xl p-4 space-y-3">
+          <div className="rounded-xl border border-slate-200/70 bg-white/70 p-4 space-y-3 shadow-lg shadow-slate-200/50 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06] dark:shadow-black/20">
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Cari nama proyek..."
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:border-slate-600 dark:bg-slate-800/60 dark:text-slate-100 dark:placeholder-slate-400"
             />
             <div className="flex flex-wrap gap-2">
               {['All', 'In Progress', 'Completed', 'Blocked'].map(status => {
@@ -910,7 +961,7 @@ export default function Home() {
                     className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                       active
                         ? 'bg-indigo-600 text-white'
-                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-white/10 dark:text-slate-300 dark:hover:bg-white/20'
                     }`}
                   >
                     {status}
@@ -920,14 +971,14 @@ export default function Home() {
             </div>
             {allTags.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Tag / Label:</p>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 dark:text-slate-400">Tag / Label:</p>
                 <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => setTagFilter([])}
                     className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
                       tagFilter.length === 0
                         ? 'bg-violet-600 text-white'
-                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-white/10 dark:text-slate-300 dark:hover:bg-white/20'
                     }`}
                   >
                     Semua
@@ -943,7 +994,7 @@ export default function Home() {
                         className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
                           active
                             ? 'bg-violet-600 text-white'
-                            : 'bg-violet-50 text-violet-700 hover:bg-violet-100'
+                            : 'bg-violet-50 text-violet-700 hover:bg-violet-100 dark:bg-violet-500/10 dark:text-violet-300 dark:hover:bg-violet-500/20'
                         }`}
                       >
                         {tag}
@@ -954,11 +1005,11 @@ export default function Home() {
               </div>
             )}
             <div className="flex flex-wrap items-center gap-2 pt-1">
-              <span className="text-sm text-slate-500">Urutkan:</span>
+              <span className="text-sm text-slate-500 dark:text-slate-400">Urutkan:</span>
               <select
                 value={sortKey}
                 onChange={(e) => setSortKey(e.target.value)}
-                className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
+                className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white dark:border-slate-600 dark:bg-slate-800/60 dark:text-slate-100"
               >
                 <option value="created_at">Tanggal</option>
                 <option value="project_name">Proyek</option>
@@ -969,20 +1020,20 @@ export default function Home() {
                 type="button"
                 onClick={() => setSortDir(d => (d === 'asc' ? 'desc' : 'asc'))}
                 title={sortDir === 'asc' ? 'Urutan menaik' : 'Urutan menurun'}
-                className="px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors flex items-center gap-1"
+                className="px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors flex items-center gap-1 dark:bg-white/10 dark:text-slate-300 dark:hover:bg-white/20"
               >
                 {sortDir === 'asc' ? '▲ Naik' : '▼ Turun'}
               </button>
             </div>
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Prioritas:</p>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 dark:text-slate-400">Prioritas:</p>
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => setPriorityFilter([])}
                   className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
                     priorityFilter.length === 0
                       ? 'bg-orange-600 text-white'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-white/10 dark:text-slate-300 dark:hover:bg-white/20'
                   }`}
                 >
                   Semua
@@ -998,7 +1049,7 @@ export default function Home() {
                       className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
                         active
                           ? 'bg-orange-600 text-white'
-                          : 'bg-orange-50 text-orange-700 hover:bg-orange-100'
+                          : 'bg-orange-50 text-orange-700 hover:bg-orange-100 dark:bg-orange-500/10 dark:text-orange-300 dark:hover:bg-orange-500/20'
                       }`}
                     >
                       {o.label}
@@ -1010,15 +1061,15 @@ export default function Home() {
           </div>
 
           {filteredHistory.length === 0 ? (
-            <div className="bg-white border border-dashed border-slate-300 rounded-xl p-8 text-center text-slate-500">
+            <div className="rounded-xl border border-dashed border-slate-300 bg-white/70 p-8 text-center text-slate-500 backdrop-blur-xl dark:border-slate-600 dark:bg-white/[0.06] dark:text-slate-400">
               {history.length === 0
                 ? 'Belum ada catatan hari ini. Mulai ketik di atas!'
                 : 'Tidak ada hasil yang cocok dengan filter.'}
             </div>
           ) : view === 'table' ? (
-            <div className="bg-white shadow-sm border border-slate-200 rounded-xl overflow-x-auto">
+            <div className="rounded-xl border border-slate-200/70 bg-white/70 shadow-lg shadow-slate-200/50 backdrop-blur-xl overflow-x-auto dark:border-white/10 dark:bg-white/[0.06] dark:shadow-black/20">
               <table className="w-full text-sm text-left">
-                <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500 border-b border-slate-200">
+                <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500 border-b border-slate-200 dark:bg-white/[0.04] dark:text-slate-400 dark:border-white/10">
                   <tr>
                     <th className="px-4 py-3 font-semibold">Tanggal</th>
                     <th className="px-4 py-3 font-semibold">Proyek</th>
@@ -1031,7 +1082,7 @@ export default function Home() {
                     <th className="px-4 py-3 font-semibold">Aksi</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-white/10">
                   {taskRows.map((row, idx) => {
                     const isEditing = row.id === editingId;
                     const firstOfId = taskRows.findIndex(r => r.id === row.id) === idx;
@@ -1039,27 +1090,27 @@ export default function Home() {
                       <Fragment key={idx}>
                         {isEditing && firstOfId && (
                           <tr>
-                            <td colSpan={9} className="px-4 py-3 bg-indigo-50/50">
+                            <td colSpan={9} className="px-4 py-3 bg-indigo-50/50 dark:bg-indigo-500/20">
                               {editFormJsx}
                             </td>
                           </tr>
                         )}
                         {!isEditing && (
-                          <tr className="hover:bg-slate-50 transition-colors">
-                            <td className="px-4 py-3 whitespace-nowrap text-slate-500">{row.date}</td>
-                            <td className="px-4 py-3 font-medium text-indigo-600 whitespace-nowrap">{row.project_name}</td>
-                            <td className="px-4 py-3 text-slate-700">{row.task}</td>
+                          <tr className="hover:bg-slate-50 transition-colors dark:hover:bg-white/5">
+                            <td className="px-4 py-3 whitespace-nowrap text-slate-500 dark:text-slate-400">{row.date}</td>
+                            <td className="px-4 py-3 font-medium text-indigo-600 whitespace-nowrap dark:text-indigo-400">{row.project_name}</td>
+                            <td className="px-4 py-3 text-slate-700 dark:text-slate-200">{row.task}</td>
                             <td className="px-4 py-3 whitespace-nowrap">
-                              <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${row.status === 'Completed' ? 'bg-green-100 text-green-800' :
-                                row.status === 'Blocked' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
+                              <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${row.status === 'Completed' ? 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-400' :
+                                row.status === 'Blocked' ? 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-400' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/15 dark:text-yellow-400'
                                 }`}>
                                 {row.status}
                               </span>
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap">
-                              <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${row.priority === 'kritis' ? 'bg-red-100 text-red-800' :
-                                row.priority === 'tinggi' ? 'bg-orange-100 text-orange-800' :
-                                row.priority === 'rendah' ? 'bg-slate-100 text-slate-600' : 'bg-sky-100 text-sky-800'
+                              <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${row.priority === 'kritis' ? 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-400' :
+                                row.priority === 'tinggi' ? 'bg-orange-100 text-orange-800 dark:bg-orange-500/15 dark:text-orange-400' :
+                                row.priority === 'rendah' ? 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-400' : 'bg-sky-100 text-sky-800 dark:bg-sky-500/15 dark:text-sky-400'
                                 }`}>
                                 {priorityLabels[row.priority] || 'Sedang'}
                               </span>
@@ -1069,26 +1120,26 @@ export default function Home() {
                                 const badge = deadlineBadge(row.deadline);
                                 return (
                                   <div className="flex flex-col gap-0.5">
-                                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${badge ? badge.cls : 'bg-slate-100 text-slate-600'}`}>
+                                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${badge ? badge.cls : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-400'}`}>
                                       {formatDate(row.deadline)}
                                     </span>
-                                    {badge && <span className="text-[10px] font-medium text-rose-600">{badge.text}</span>}
+                                    {badge && <span className="text-[10px] font-medium text-rose-600 dark:text-rose-400">{badge.text}</span>}
                                   </div>
                                 );
                               })() : (
-                                <span className="text-xs text-slate-300">—</span>
+                                <span className="text-xs text-slate-300 dark:text-slate-600">—</span>
                               )}
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap">
                               <div className="flex flex-wrap gap-1">
                                 {(row.tags || []).map(tag => (
-                                  <span key={tag} className="px-2 py-0.5 rounded-full text-xs font-medium bg-violet-100 text-violet-700">
+                                  <span key={tag} className="px-2 py-0.5 rounded-full text-xs font-medium bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300">
                                     {tag}
                                   </span>
                                 ))}
                               </div>
                             </td>
-                            <td className="px-4 py-3 text-slate-500 italic text-xs">"{row.summary}"</td>
+                            <td className="px-4 py-3 text-slate-500 italic text-xs dark:text-slate-400">"{row.summary}"</td>
                             <td className="px-4 py-3 whitespace-nowrap">
                               <div className="flex gap-1">
                                 <button
@@ -1097,7 +1148,7 @@ export default function Home() {
                                     const editItem = filteredHistory.find(i => i.id === row.id);
                                     if (editItem) openEdit(editItem);
                                   }}
-                                  className="px-2 py-1 rounded text-xs font-medium bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition-colors"
+                                  className="px-2 py-1 rounded text-xs font-medium bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition-colors dark:bg-indigo-500/15 dark:text-indigo-300 dark:hover:bg-indigo-500/25"
                                 >
                                   Edit
                                 </button>
@@ -1105,7 +1156,7 @@ export default function Home() {
                                   type="button"
                                   onClick={() => handleDelete(row.id)}
                                   disabled={deletingId === row.id}
-                                  className="px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors disabled:opacity-50"
+                                  className="px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors disabled:opacity-50 dark:bg-red-500/15 dark:text-red-300 dark:hover:bg-red-500/25"
                                 >
                                   {deletingId === row.id ? '...' : 'Hapus'}
                                 </button>
@@ -1121,38 +1172,38 @@ export default function Home() {
             </div>
           ) : (
             paginatedHistory.map((item, index) => (
-              <div key={item.id || index} className="bg-white shadow-sm border border-slate-200 rounded-xl p-6 space-y-3">
+              <div key={item.id || index} className="rounded-xl border border-slate-200/70 bg-white/70 p-6 space-y-3 shadow-lg shadow-slate-200/50 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06] dark:shadow-black/20">
                 {editingId === item.id ? (
                   editFormJsx
                 ) : (
                   <>
                     <div className="flex justify-between items-start">
-                      <h3 className="text-lg font-bold text-indigo-600">{item.project_name}</h3>
-                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${item.status === 'Completed' ? 'bg-green-100 text-green-800' :
-                        item.status === 'Blocked' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
+                      <h3 className="text-lg font-bold text-indigo-600 dark:text-indigo-400">{item.project_name}</h3>
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${item.status === 'Completed' ? 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-400' :
+                        item.status === 'Blocked' ? 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-400' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/15 dark:text-yellow-400'
                         }`}>
                         {item.status}
                       </span>
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${(item.priority || 'sedang') === 'kritis' ? 'bg-red-100 text-red-800' :
-                        (item.priority || 'sedang') === 'tinggi' ? 'bg-orange-100 text-orange-800' :
-                        (item.priority || 'sedang') === 'rendah' ? 'bg-slate-100 text-slate-600' : 'bg-sky-100 text-sky-800'
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${(item.priority || 'sedang') === 'kritis' ? 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-400' :
+                        (item.priority || 'sedang') === 'tinggi' ? 'bg-orange-100 text-orange-800 dark:bg-orange-500/15 dark:text-orange-400' :
+                        (item.priority || 'sedang') === 'rendah' ? 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-400' : 'bg-sky-100 text-sky-800 dark:bg-sky-500/15 dark:text-sky-400'
                         }`}>
                         {priorityLabels[(item.priority || 'sedang').toLowerCase()] || 'Sedang'}
                       </span>
-                      <span className="text-xs text-slate-400">Prioritas</span>
+                      <span className="text-xs text-slate-400 dark:text-slate-500">Prioritas</span>
                     </div>
 
                     {item.deadline && (() => {
                       const badge = deadlineBadge(item.deadline);
                       return (
                         <div className="flex items-center gap-2">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-rose-500 dark:text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                           </svg>
-                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${badge ? badge.cls : 'bg-slate-100 text-slate-600'}`}>
+                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${badge ? badge.cls : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-400'}`}>
                             {formatDate(item.deadline)}
                           </span>
                           {badge && <span className="text-xs font-medium text-rose-600">{badge.text}</span>}
@@ -1160,12 +1211,12 @@ export default function Home() {
                       );
                     })()}
 
-                    <p className="text-sm text-slate-700 italic">"{item.summary}"</p>
+                    <p className="text-sm text-slate-700 italic dark:text-slate-200">"{item.summary}"</p>
 
                     {(item.tags && item.tags.length > 0) && (
                       <div className="flex flex-wrap gap-1">
                         {item.tags.map(tag => (
-                          <span key={tag} className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-violet-100 text-violet-700">
+                          <span key={tag} className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300">
                             {tag}
                           </span>
                         ))}
@@ -1173,8 +1224,8 @@ export default function Home() {
                     )}
 
                     <div>
-                      <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Detail Tugas:</h4>
-                      <ul className="list-disc list-inside text-sm text-slate-700 space-y-1">
+                      <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 dark:text-slate-400">Detail Tugas:</h4>
+                      <ul className="list-disc list-inside text-sm text-slate-700 space-y-1 dark:text-slate-200">
                         {item.tasks.map((task, idx) => (
                           <li key={idx}>{task}</li>
                         ))}
@@ -1186,7 +1237,7 @@ export default function Home() {
                         <button
                           type="button"
                           onClick={() => openCompleteModal(item)}
-                          className="px-3 py-1.5 rounded-lg text-sm font-medium bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors"
+                          className="px-3 py-1.5 rounded-lg text-sm font-medium bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/25"
                         >
                           ✓ Selesai
                         </button>
@@ -1194,7 +1245,7 @@ export default function Home() {
                       <button
                         type="button"
                         onClick={() => openEdit(item)}
-                        className="px-3 py-1.5 rounded-lg text-sm font-medium bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition-colors"
+                        className="px-3 py-1.5 rounded-lg text-sm font-medium bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition-colors dark:bg-indigo-500/15 dark:text-indigo-300 dark:hover:bg-indigo-500/25"
                       >
                         Edit
                       </button>
@@ -1202,7 +1253,7 @@ export default function Home() {
                         type="button"
                         onClick={() => handleDelete(item.id)}
                         disabled={deletingId === item.id}
-                        className="px-3 py-1.5 rounded-lg text-sm font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors disabled:opacity-50"
+                        className="px-3 py-1.5 rounded-lg text-sm font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors disabled:opacity-50 dark:bg-red-500/15 dark:text-red-300 dark:hover:bg-red-500/25"
                       >
                         {deletingId === item.id ? 'Menghapus...' : 'Hapus'}
                       </button>
@@ -1215,7 +1266,7 @@ export default function Home() {
 
           {totalPages > 1 && (
             <div className="flex items-center justify-between flex-wrap gap-2">
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-slate-500 dark:text-slate-400">
                 Menampilkan {((safePage - 1) * pageSize) + 1}–{Math.min(safePage * pageSize, sortedHistory.length)} dari {sortedHistory.length} catatan
               </p>
               <div className="flex items-center gap-1">
@@ -1223,7 +1274,7 @@ export default function Home() {
                   type="button"
                   onClick={() => setPage(safePage - 1)}
                   disabled={safePage <= 1}
-                  className="px-3 py-1.5 rounded-lg text-sm font-medium bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="px-3 py-1.5 rounded-lg text-sm font-medium bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed dark:bg-white/10 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-white/20"
                 >
                   ‹ Sebelumnya
                 </button>
@@ -1236,7 +1287,7 @@ export default function Home() {
                       className={`w-9 h-9 rounded-lg text-sm font-medium transition-colors ${
                         p === safePage
                           ? 'bg-indigo-600 text-white'
-                          : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
+                          : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 dark:bg-white/10 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-white/20'
                       }`}
                     >
                       {p}
@@ -1247,7 +1298,7 @@ export default function Home() {
                   type="button"
                   onClick={() => setPage(safePage + 1)}
                   disabled={safePage >= totalPages}
-                  className="px-3 py-1.5 rounded-lg text-sm font-medium bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="px-3 py-1.5 rounded-lg text-sm font-medium bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed dark:bg-white/10 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-white/20"
                 >
                   Berikutnya ›
                 </button>
@@ -1263,37 +1314,37 @@ export default function Home() {
                 className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
                 onClick={cancelComplete}
               />
-              <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+              <div className="relative w-full max-w-md rounded-2xl border border-slate-200/70 bg-white/90 p-6 shadow-2xl backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/90">
                 <div className="flex items-center gap-3">
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
                   </div>
-                  <h2 className="text-lg font-bold tracking-tight text-slate-900">Konfirmasi Penyelesaian</h2>
+                  <h2 className="text-lg font-bold tracking-tight text-slate-900 dark:text-slate-100">Konfirmasi Penyelesaian</h2>
                 </div>
 
-                <p className="mt-4 text-sm text-slate-600">
+                <p className="mt-4 text-sm text-slate-600 dark:text-slate-300">
                   Tandai tugas berikut sebagai <span className="font-semibold text-emerald-600">selesai</span>?
                 </p>
-                <div className="mt-3 rounded-xl bg-slate-50 border border-slate-200 p-4">
-                  <p className="font-semibold text-slate-800">{completeTarget.project_name}</p>
-                  <p className="mt-1 text-sm text-slate-500 italic">"{completeTarget.summary}"</p>
+                <div className="mt-3 rounded-xl bg-slate-50 border border-slate-200 p-4 dark:border-white/10 dark:bg-white/[0.06]">
+                  <p className="font-semibold text-slate-800 dark:text-slate-100">{completeTarget.project_name}</p>
+                  <p className="mt-1 text-sm text-slate-500 italic dark:text-slate-400">"{completeTarget.summary}"</p>
                   {completeTarget.deadline && (
-                    <p className="mt-2 text-xs text-rose-600">
+                    <p className="mt-2 text-xs text-rose-600 dark:text-rose-400">
                       Deadline: {formatDate(completeTarget.deadline)} ({deadlineBadge(completeTarget.deadline)?.text})
                     </p>
                   )}
                 </div>
 
-                {completeError && <p className="mt-3 text-sm text-red-600">{completeError}</p>}
+                {completeError && <p className="mt-3 text-sm text-red-600 dark:text-red-400">{completeError}</p>}
 
                 <div className="mt-5 flex gap-2">
                   <button
                     type="button"
                     onClick={cancelComplete}
                     disabled={completingId === completeTarget.id}
-                    className="flex-1 px-4 py-2.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 font-medium transition-colors disabled:opacity-50"
+                    className="flex-1 px-4 py-2.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 font-medium transition-colors dark:bg-white/10 dark:text-slate-300 dark:hover:bg-white/20 disabled:opacity-50"
                   >
                     Batal
                   </button>
@@ -1310,7 +1361,7 @@ export default function Home() {
             </div>
           )}
 
-          <footer className="border-t border-slate-200 pt-6 text-center text-xs text-slate-400">
+          <footer className="border-t border-slate-200 pt-6 text-center text-xs text-slate-400 dark:border-white/10 dark:text-slate-500">
             &copy; {new Date().getFullYear()} AI Project Manager &mdash; Dibangun dengan Supabase &amp; Gemini
           </footer>
         </div>
