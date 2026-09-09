@@ -69,6 +69,9 @@ export async function PATCH(request) {
       return NextResponse.json({ success: false, error: 'Tidak ada field yang diubah' }, { status: 400 });
     }
 
+    updates.updated_at = new Date().toISOString();
+    updates.deleted_at = null; // edit = "hidupkan kembali" jika pernah di-soft-delete
+
     const { data, error } = await supabase
       .from('progress_logs')
       .update(updates)
@@ -96,14 +99,16 @@ export async function DELETE(request) {
       return NextResponse.json({ success: false, error: 'ID catatan tidak valid' }, { status: 400 });
     }
 
-    const { error } = await supabase
+    // Soft-delete agar bisa disinkronkan antar perangkat & dipulihkan offline
+    const { data, error } = await supabase
       .from('progress_logs')
-      .delete()
-      .eq('id', id);
+      .update({ deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select();
 
     if (error) throw error;
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, data });
   } catch (error) {
     console.error('Error deleting progress:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

@@ -37,7 +37,7 @@ export async function POST(request) {
 
     const { data, error } = await supabase
       .from('jadwal_logs')
-      .upsert({ activity_id, tanggal, selesai, catatan }, { onConflict: 'activity_id,tanggal' })
+      .upsert({ activity_id, tanggal, selesai, catatan, updated_at: new Date().toISOString() }, { onConflict: 'activity_id,tanggal' })
       .select();
 
     if (error) throw error;

@@ -3,6 +3,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '@/lib/supabase';
+import { cacheRows, networkOrCache, enqueue, applyLocal, localUpsert, localSoftDelete } from '@/lib/offlineApi';
+import { isOnline } from '@/lib/sync';
 
 const DAY_NAMES = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
 const PERIOD_LABELS = { harian: 'Harian', mingguan: 'Mingguan', bulanan: 'Bulanan', sekali: 'Sekali' };
@@ -64,24 +66,29 @@ export default function JadwalSection() {
   }, []);
 
   const loadData = async () => {
-    if (!supabase) {
-      setLoadError('Supabase belum dikonfigurasi.');
-      setLoading(false);
-      return;
-    }
     setLoading(true);
     setLoadError('');
-    const { data: acts, error: errA } = await supabase
-      .from('jadwal_activities')
-      .select('*')
-      .order('created_at', { ascending: false });
-    const { data: logs, error: errL } = await supabase.from('jadwal_logs').select('*');
 
-    if (errA || errL) {
-      setLoadError((errA || errL).message);
-    } else {
-      setActivities(acts || []);
-      setLogs(logs || []);
+    const netActs = async () => {
+      if (!supabase) throw new Error('offline');
+      const { data, error } = await supabase.from('jadwal_activities').select('*').order('created_at', { ascending: false });
+      if (error) throw new Error(error.message);
+      return data || [];
+    };
+    const netLogs = async () => {
+      if (!supabase) throw new Error('offline');
+      const { data, error } = await supabase.from('jadwal_logs').select('*');
+      if (error) throw new Error(error.message);
+      return data || [];
+    };
+
+    const actsRes = await networkOrCache('jadwal_activities', netActs);
+    const logsRes = await networkOrCache('jadwal_logs', netLogs);
+
+    setActivities(actsRes.rows);
+    setLogs(logsRes.rows);
+    if (actsRes.rows.length === 0 && logsRes.rows.length === 0 && !isOnline()) {
+      setLoadError('Offline & belum ada data tersimpan di perangkat.');
     }
     setLoading(false);
   };
@@ -123,6 +130,21 @@ export default function JadwalSection() {
     const next = !isDone(activity.id, iso);
     setSavingLogKey(key);
     try {
+      if (!isOnline()) {
+        const localLog = {
+          id: crypto.randomUUID(),
+          activity_id: activity.id,
+          tanggal: iso,
+          selesai: next,
+          catatan: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        await applyLocal('jadwal_logs', localLog);
+        await enqueue('jadwal_logs', '/api/jadwal-log', 'POST', { activity_id: activity.id, tanggal: iso, selesai: next });
+        setLogs((prev) => [...prev.filter((l) => !(l.activity_id === activity.id && l.tanggal === iso)), localLog]);
+        return;
+      }
       const res = await fetch('/api/jadwal-log', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -130,6 +152,7 @@ export default function JadwalSection() {
       });
       const result = await res.json();
       if (!result.success) throw new Error(result.error);
+      await cacheRows('jadwal_logs', [result.data]);
       setLogs((prev) => [...prev.filter((l) => !(l.activity_id === activity.id && l.tanggal === iso)), result.data]);
     } catch (err) {
       setError(err.message);
@@ -216,6 +239,26 @@ export default function JadwalSection() {
     if (form.tipe === 'sekali') payload.tanggal = form.tanggal;
 
     try {
+      if (!isOnline()) {
+        let saved;
+        if (editing) {
+          saved = await localUpsert('jadwal_activities', editing.id, payload);
+          await enqueue('jadwal_activities', '/api/jadwal', 'PATCH', { id: editing.id, ...payload });
+        } else {
+          const now = new Date().toISOString();
+          saved = { id: crypto.randomUUID(), created_at: now, updated_at: now, ...payload };
+          await applyLocal('jadwal_activities', saved);
+          await enqueue('jadwal_activities', '/api/jadwal', 'POST', saved);
+        }
+        setActivities((prev) => {
+          if (editing) return prev.map((a) => (a.id === saved.id ? saved : a));
+          return [saved, ...prev];
+        });
+        setFormOpen(false);
+        setEditing(null);
+        setForm(emptyForm);
+        return;
+      }
       const res = await fetch('/api/jadwal', {
         method: editing ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -224,6 +267,7 @@ export default function JadwalSection() {
       const result = await res.json();
       if (!result.success) throw new Error(result.error);
       const saved = result.data;
+      await cacheRows('jadwal_activities', [saved]);
       setActivities((prev) => {
         if (editing) return prev.map((a) => (a.id === saved.id ? saved : a));
         return [saved, ...prev];
@@ -242,6 +286,13 @@ export default function JadwalSection() {
     if (!window.confirm('Hapus kegiatan ini? Riwayat checklist ikut terhapus.')) return;
     setDeletingId(id);
     try {
+      if (!isOnline()) {
+        await localSoftDelete('jadwal_activities', id);
+        await enqueue('jadwal_activities', '/api/jadwal', 'DELETE', { id });
+        setActivities((prev) => prev.filter((a) => a.id !== id));
+        setLogs((prev) => prev.filter((l) => l.activity_id !== id));
+        return;
+      }
       const res = await fetch('/api/jadwal', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
@@ -249,6 +300,7 @@ export default function JadwalSection() {
       });
       const result = await res.json();
       if (!result.success) throw new Error(result.error);
+      await cacheRows('jadwal_activities', result.data || []);
       setActivities((prev) => prev.filter((a) => a.id !== id));
       setLogs((prev) => prev.filter((l) => l.activity_id !== id));
     } catch (err) {
@@ -260,6 +312,12 @@ export default function JadwalSection() {
 
   const toggleAktif = async (activity) => {
     try {
+      if (!isOnline()) {
+        const saved = await localUpsert('jadwal_activities', activity.id, { aktif: !activity.aktif });
+        await enqueue('jadwal_activities', '/api/jadwal', 'PATCH', { id: activity.id, aktif: !activity.aktif });
+        setActivities((prev) => prev.map((a) => (a.id === saved.id ? saved : a)));
+        return;
+      }
       const res = await fetch('/api/jadwal', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -267,6 +325,7 @@ export default function JadwalSection() {
       });
       const result = await res.json();
       if (!result.success) throw new Error(result.error);
+      await cacheRows('jadwal_activities', [result.data]);
       setActivities((prev) => prev.map((a) => (a.id === result.data.id ? result.data : a)));
     } catch (err) {
       setError(err.message);

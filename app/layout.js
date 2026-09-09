@@ -1,8 +1,10 @@
 import './globals.css'
+import PwaRegister from '@/components/PwaRegister'
 
 export const metadata = {
   title: 'AI Project Manager',
   description: 'Manage your projects with AI assistance',
+  manifest: '/manifest.webmanifest',
   icons: {
     icon: [
       { url: '/icons/favicon-16.png', sizes: '16x16', type: 'image/png' },
@@ -27,7 +29,7 @@ export default function RootLayout({ children }) {
           }}
         />
       </head>
-      <body>{children}</body>
+      <body>{children}<PwaRegister /></body>
     </html>
   )
 }

@@ -5,10 +5,15 @@ import { supabase } from '@/lib/supabase';
 import JadwalSection from '@/components/JadwalSection';
 import LockScreen from '@/components/LockScreen';
 import SecuritySettings from '@/components/SecuritySettings';
+import { cacheRows, networkOrCache, enqueue, applyLocal, localUpsert, localSoftDelete } from '@/lib/offlineApi';
+import { isOnline, syncAll, pendingCount } from '@/lib/sync';
 
 export default function Home() {
   const [unlocked, setUnlocked] = useState(false);
   const [securityOpen, setSecurityOpen] = useState(false);
+  const [offline, setOffline] = useState(false);
+  const [pending, setPending] = useState(0);
+  const [syncing, setSyncing] = useState(false);
   const [rawText, setRawText] = useState('');
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState([]);
@@ -43,7 +48,7 @@ export default function Home() {
   const [editLoading, setEditLoading] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [upcomingDeadlines, setUpcomingDeadlines] = useState([]);
-  const [deadlineError, setDeadlineError] = useState('');
+  const [deadlineError] = useState('');
   const [completeTarget, setCompleteTarget] = useState(null);
   const [completingId, setCompletingId] = useState(null);
   const [completeError, setCompleteError] = useState('');
@@ -137,51 +142,60 @@ export default function Home() {
   };
 
   const fetchDeadlines = async () => {
-    if (!supabase) return;
-
     const today = new Date().toISOString().slice(0, 10);
-    const { data, error } = await supabase
-      .from('progress_logs')
-      .select('*')
-      .neq('status', 'Completed')
-      .gte('deadline', today)
-      .not('deadline', 'is', null)
-      .order('deadline', { ascending: true })
-      .limit(5);
+    const { rows } = await networkOrCache('progress_logs', async () => {
+      if (!supabase) return [];
+      const { data, error } = await supabase
+        .from('progress_logs')
+        .select('*')
+        .neq('status', 'Completed')
+        .gte('deadline', today)
+        .not('deadline', 'is', null)
+        .order('deadline', { ascending: true })
+        .limit(5);
+      if (error) throw new Error(error.message);
+      return data || [];
+    });
 
-    if (error) {
-      setDeadlineError(error.message);
-      return;
-    }
-    setUpcomingDeadlines((data || []).map(item => ({
-      ...item,
-      tasks: safeParse(item.tasks, []),
-      tags: safeParse(item.tags, []),
-    })));
-  };
-
-  const fetchHistory = async () => {
-    if (!supabase) return;
-
-    const { data, error } = await supabase
-      .from('progress_logs')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (!error && data) {
-      // Format ulang data tasks & tags dari string JSON kembali ke array
-      const formattedData = data.map(item => ({
+    setUpcomingDeadlines(rows
+      .filter((r) => r.deadline && r.status !== 'Completed')
+      .sort((a, b) => String(a.deadline).localeCompare(String(b.deadline)))
+      .slice(0, 5)
+      .map((item) => ({
         ...item,
         tasks: safeParse(item.tasks, []),
         tags: safeParse(item.tags, []),
-      }));
-      setHistory(formattedData);
-    }
+      })));
+  };
+
+  const fetchHistory = async () => {
+    const { rows } = await networkOrCache('progress_logs', async () => {
+      if (!supabase) return [];
+      const { data, error } = await supabase
+        .from('progress_logs')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw new Error(error.message);
+      return data || [];
+    });
+
+    // Format ulang data tasks & tags dari string JSON kembali ke array
+    const formattedData = rows.map((item) => ({
+      ...item,
+      tasks: safeParse(item.tasks, []),
+      tags: safeParse(item.tags, []),
+    }));
+    setHistory(formattedData);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!rawText.trim()) return;
+
+    if (!isOnline()) {
+      setError('Tidak ada koneksi untuk AI. Gunakan tombol "Masukkan Manual" agar tersimpan offline.');
+      return;
+    }
 
     setLoading(true);
     setError('');
@@ -227,6 +241,39 @@ export default function Home() {
     setManualLoading(true);
     setManualError('');
 
+    if (!isOnline()) {
+      try {
+        const id = crypto.randomUUID();
+        const row = {
+          id,
+          created_at: new Date().toISOString(),
+          project_name: payload.project_name.trim(),
+          status: payload.status,
+          priority: (payload.priority || 'sedang').toLowerCase(),
+          summary: payload.summary.trim(),
+          tasks: (manualForm.tasks || '').split('\n').map((t) => t.trim()).filter(Boolean),
+          tags: payload.tags,
+          deadline: payload.deadline || null,
+          raw_text: '',
+        };
+        await applyLocal('progress_logs', row);
+        await enqueue('progress_logs', '/api/manual-progress', 'POST', row);
+        setManualOpen(false);
+        setManualForm({ project_name: '', tasks: '', status: 'In Progress', priority: 'sedang', summary: '', tags: '', deadline: '' });
+        setError('');
+        setOffline(true);
+        await refreshPending();
+        fetchHistory();
+        fetchDeadlines();
+        return;
+      } catch (err) {
+        setManualError(err.message);
+        return;
+      } finally {
+        setManualLoading(false);
+      }
+    }
+
     try {
       const res = await fetch('/api/manual-progress', {
         method: 'POST',
@@ -237,6 +284,7 @@ export default function Home() {
       const result = await res.json();
       if (!result.success) throw new Error(result.error);
 
+      await cacheRows('progress_logs', result.data || []);
       setManualOpen(false);
       setManualForm({ project_name: '', tasks: '', status: 'In Progress', priority: 'sedang', summary: '', tags: '', deadline: '' });
       setError('');
@@ -274,6 +322,33 @@ export default function Home() {
     setEditLoading(true);
     setEditError('');
 
+    if (!isOnline()) {
+      try {
+        const fields = {
+          project_name: editForm.project_name,
+          status: editForm.status,
+          priority: (editForm.priority || 'sedang').toLowerCase(),
+          summary: editForm.summary,
+          tasks: (editForm.tasks || '').split('\n').map((t) => t.trim()).filter(Boolean),
+          tags: parseTags(editForm.tags),
+          deadline: editForm.deadline || null,
+        };
+        await localUpsert('progress_logs', editingId, fields);
+        await enqueue('progress_logs', '/api/progress', 'PATCH', { id: editingId, ...fields });
+        cancelEdit();
+        setOffline(true);
+        await refreshPending();
+        fetchHistory();
+        fetchDeadlines();
+        return;
+      } catch (err) {
+        setEditError(err.message);
+        return;
+      } finally {
+        setEditLoading(false);
+      }
+    }
+
     try {
       const res = await fetch('/api/progress', {
         method: 'PATCH',
@@ -284,6 +359,7 @@ export default function Home() {
       const result = await res.json();
       if (!result.success) throw new Error(result.error);
 
+      await cacheRows('progress_logs', result.data || []);
       cancelEdit();
       fetchHistory();
       fetchDeadlines();
@@ -298,6 +374,23 @@ export default function Home() {
     if (!window.confirm('Hapus catatan ini? Tindakan tidak dapat dibatalkan.')) return;
 
     setDeletingId(id);
+    if (!isOnline()) {
+      try {
+        await localSoftDelete('progress_logs', id);
+        await enqueue('progress_logs', '/api/progress', 'DELETE', { id });
+        setOffline(true);
+        await refreshPending();
+        fetchHistory();
+        fetchDeadlines();
+        return;
+      } catch (err) {
+        window.alert(`Gagal menghapus: ${err.message}`);
+        return;
+      } finally {
+        setDeletingId(null);
+      }
+    }
+
     try {
       const res = await fetch('/api/progress', {
         method: 'DELETE',
@@ -308,6 +401,7 @@ export default function Home() {
       const result = await res.json();
       if (!result.success) throw new Error(result.error);
 
+      await cacheRows('progress_logs', result.data || []);
       fetchHistory();
       fetchDeadlines();
     } catch (err) {
@@ -334,6 +428,23 @@ export default function Home() {
     setCompletingId(completeTarget.id);
     setCompleteError('');
 
+    if (!isOnline()) {
+      try {
+        await localUpsert('progress_logs', completeTarget.id, { status: 'Completed' });
+        await enqueue('progress_logs', '/api/progress', 'PATCH', { id: completeTarget.id, status: 'Completed' });
+        cancelComplete();
+        setOffline(true);
+        await refreshPending();
+        fetchHistory();
+        fetchDeadlines();
+        return;
+      } catch (err) {
+        setCompleteError(err.message);
+        setCompletingId(null);
+        return;
+      }
+    }
+
     try {
       const res = await fetch('/api/progress', {
         method: 'PATCH',
@@ -352,6 +463,43 @@ export default function Home() {
       setCompletingId(null);
     }
   };
+
+  const refreshPending = async () => {
+    setPending(await pendingCount());
+  };
+
+  const syncNow = async () => {
+    if (syncing) return;
+    setSyncing(true);
+    const r = await syncAll();
+    if (r && r.ok) {
+      fetchHistory();
+      fetchDeadlines();
+    }
+    setOffline(!isOnline());
+    await refreshPending();
+    setSyncing(false);
+  };
+
+  // Monitor koneksi: saat online kembali, sinkronkan otomatis
+  useEffect(() => {
+    const goOnline = () => {
+      setOffline(false);
+      syncNow();
+    };
+    const goOffline = () => {
+      setOffline(true);
+    };
+    setOffline(!isOnline());
+    refreshPending();
+    window.addEventListener('online', goOnline);
+    window.addEventListener('offline', goOffline);
+    return () => {
+      window.removeEventListener('online', goOnline);
+      window.removeEventListener('offline', goOffline);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleWeeklyRecap = async () => {
     setRecapLoading(true);
@@ -763,6 +911,39 @@ export default function Home() {
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:py-10">
+        {/* Banner status sinkronisasi/offline */}
+        {(offline || pending > 0) && (
+          <div className={`mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-2.5 text-sm shadow-sm backdrop-blur ${
+            offline
+              ? 'border-amber-300 bg-amber-50/90 text-amber-800 dark:border-amber-400/30 dark:bg-amber-500/10 dark:text-amber-300'
+              : 'border-sky-300 bg-sky-50/90 text-sky-800 dark:border-sky-400/30 dark:bg-sky-500/10 dark:text-sky-300'
+          }`}>
+            <span className="flex items-center gap-2">
+              {offline ? (
+                <>
+                  <span className="inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-amber-500" />
+                  Mode offline — perubahan tersimpan di perangkat.
+                </>
+              ) : (
+                <>
+                  <span className="inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-sky-500" />
+                  {pending} perubahan menunggu sinkronisasi.
+                </>
+              )}
+            </span>
+            {pending > 0 && (
+              <button
+                type="button"
+                onClick={syncNow}
+                disabled={syncing || offline}
+                className="rounded-lg bg-white/70 px-3 py-1.5 text-xs font-semibold ring-1 ring-slate-200 transition-colors hover:bg-white disabled:opacity-50 dark:bg-white/10 dark:ring-white/15 dark:hover:bg-white/20"
+              >
+                {syncing ? 'Menyinkronkan...' : offline ? 'Menunggu koneksi' : 'Sinkron'}
+              </button>
+            )}
+          </div>
+        )}
+
         <div className="space-y-8">
 
           {activeTab === 'dashboard' && (

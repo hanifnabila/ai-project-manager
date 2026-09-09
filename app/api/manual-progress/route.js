@@ -41,20 +41,27 @@ export async function POST(request) {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
     );
 
+    // id & created_at bole datang dari klien (dibuat saat offline)
+    const row = {
+      project_name: project_name.trim(),
+      status,
+      summary: summary.trim(),
+      tasks,
+      tags,
+      priority,
+      deadline,
+      raw_text: body.raw_text?.trim() || '',
+    };
+    if (typeof body.id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.id)) {
+      row.id = body.id;
+    }
+    if (typeof body.created_at === 'string' && !Number.isNaN(Date.parse(body.created_at))) {
+      row.created_at = body.created_at;
+    }
+
     const { data, error } = await supabase
       .from('progress_logs')
-      .insert([
-        {
-          project_name: project_name.trim(),
-          status,
-          summary: summary.trim(),
-          tasks,
-          tags,
-          priority,
-          deadline,
-          raw_text: body.raw_text?.trim() || '',
-        }
-      ])
+      .insert([row])
       .select();
 
     if (error) throw error;

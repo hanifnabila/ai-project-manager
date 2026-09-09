@@ -73,6 +73,12 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: 'Judul kegiatan wajib diisi' }, { status: 400 });
     }
 
+    // id & created_at boleh datang dari klien (dibuat saat offline)
+    if (isValidUuid(body.id)) updates.id = body.id;
+    if (typeof body.created_at === 'string' && !Number.isNaN(Date.parse(body.created_at))) {
+      updates.created_at = body.created_at;
+    }
+
     const { data, error } = await supabase.from('jadwal_activities').insert(updates).select();
 
     if (error) throw error;
@@ -104,6 +110,9 @@ export async function PATCH(request) {
       return NextResponse.json({ success: false, error: 'Tidak ada field yang diubah' }, { status: 400 });
     }
 
+    updates.updated_at = new Date().toISOString();
+    updates.deleted_at = null;
+
     const { data, error } = await supabase
       .from('jadwal_activities')
       .update(updates)
@@ -131,11 +140,16 @@ export async function DELETE(request) {
       return NextResponse.json({ success: false, error: 'ID kegiatan tidak valid' }, { status: 400 });
     }
 
-    const { error } = await supabase.from('jadwal_activities').delete().eq('id', id);
+    // Soft-delete agar bisa disinkronkan antar perangkat
+    const { data, error } = await supabase
+      .from('jadwal_activities')
+      .update({ deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select();
 
     if (error) throw error;
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, data });
   } catch (error) {
     console.error('Error deleting jadwal activity:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
