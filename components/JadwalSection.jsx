@@ -458,7 +458,7 @@ export default function JadwalSection() {
         <button
           type="button"
           onClick={openCreate}
-          className="shrink-0 whitespace-nowrap rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-amber-600"
+          className="w-full shrink-0 whitespace-nowrap rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-amber-600 sm:ml-auto sm:w-auto"
         >
           ＋ Tambah Kegiatan
         </button>
