@@ -349,7 +349,7 @@ export default function JadwalSection() {
           title={done ? 'Tandai belum selesai' : 'Tandai selesai'}
           onClick={() => toggleLog(activity, iso)}
           disabled={busy}
-          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-2 transition-colors disabled:opacity-50 ${
+          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border-2 transition-colors disabled:opacity-50 sm:h-7 sm:w-7 ${
             done
               ? 'border-emerald-500 bg-emerald-500 text-white'
               : 'border-slate-300 bg-white text-slate-400 hover:border-amber-400 dark:border-slate-600 dark:bg-white/10 dark:text-slate-500'
@@ -384,14 +384,14 @@ export default function JadwalSection() {
           )}
         </div>
 
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-1">
           {activity.tipe !== 'harian' && (
             <span className="hidden rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500 sm:inline dark:bg-white/10 dark:text-slate-400">
               {PERIOD_LABELS[activity.tipe]}
             </span>
           )}
           {!activity.aktif && (
-            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500 dark:bg-white/10 dark:text-slate-400">
+            <span className="hidden rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500 sm:inline dark:bg-white/10 dark:text-slate-400">
               nonaktif
             </span>
           )}
@@ -399,9 +399,9 @@ export default function JadwalSection() {
             type="button"
             onClick={() => openEdit(activity)}
             title="Edit kegiatan"
-            className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700 transition-colors hover:bg-indigo-200 dark:bg-indigo-500/15 dark:text-indigo-300 dark:hover:bg-indigo-500/25"
+            className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700 transition-colors hover:bg-indigo-200 sm:h-7 sm:w-7 dark:bg-indigo-500/15 dark:text-indigo-300 dark:hover:bg-indigo-500/25"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-3.5 sm:w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
             </svg>
           </button>
@@ -410,10 +410,10 @@ export default function JadwalSection() {
             onClick={() => deleteActivity(activity.id)}
             disabled={deletingId === activity.id}
             title="Hapus kegiatan"
-            className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-100 text-red-700 transition-colors hover:bg-red-200 disabled:opacity-50 dark:bg-red-500/15 dark:text-red-300 dark:hover:bg-red-500/25"
+            className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-100 text-red-700 transition-colors hover:bg-red-200 disabled:opacity-50 sm:h-7 sm:w-7 dark:bg-red-500/15 dark:text-red-300 dark:hover:bg-red-500/25"
           >
             {deletingId === activity.id ? '…' : (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-3.5 sm:w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
             )}
@@ -441,16 +441,16 @@ export default function JadwalSection() {
   const todayDone = todayActivities.filter((a) => isDone(a.id, todayISO)).length;
 
   return (
-    <section className="rounded-2xl border border-amber-200/70 bg-white/60 p-6 shadow-lg shadow-amber-100/50 backdrop-blur-xl dark:border-amber-300/20 dark:bg-white/[0.06] dark:shadow-black/20 sm:p-8">
+    <section className="min-w-0 overflow-hidden rounded-2xl border border-amber-200/70 bg-white/60 p-5 shadow-lg shadow-amber-100/50 backdrop-blur-xl dark:border-amber-300/20 dark:bg-white/[0.06] dark:shadow-black/20 sm:p-8">
       {/* Header */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500 text-white shadow-md">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white shadow-md">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
           </svg>
         </div>
         <div className="min-w-0 flex-1">
-          <h2 className="text-xl font-extrabold tracking-tight text-amber-900 dark:text-amber-100">Jadwal Kegiatan</h2>
+          <h2 className="break-words text-xl font-extrabold tracking-tight text-amber-900 dark:text-amber-100">Jadwal Kegiatan</h2>
           <p className="text-sm text-amber-700 dark:text-amber-300">
             Agenda pribadi harian, mingguan, dan bulanan — terpisah dari proyek.
           </p>
@@ -458,7 +458,7 @@ export default function JadwalSection() {
         <button
           type="button"
           onClick={openCreate}
-          className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-amber-600"
+          className="shrink-0 whitespace-nowrap rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-amber-600"
         >
           ＋ Tambah Kegiatan
         </button>
@@ -641,9 +641,9 @@ export default function JadwalSection() {
             </button>
           </div>
 
-          <div className="mt-4 grid grid-cols-7 gap-1 text-center sm:gap-1.5">
+          <div className="mt-4 grid grid-cols-7 gap-[2px] text-center sm:gap-1.5">
             {DAY_NAMES.map((d) => (
-              <div key={d} className="py-1 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+              <div key={d} className="truncate py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 sm:text-xs dark:text-slate-500">
                 {d.slice(0, 3)}
               </div>
             ))}
@@ -657,7 +657,7 @@ export default function JadwalSection() {
                   type="button"
                   disabled={!cell.inMonth}
                   onClick={() => cell.iso && setSelectedDay(cell.iso)}
-                  className={`relative min-h-[56px] rounded-lg p-1 text-left text-sm transition-colors sm:min-h-[64px] sm:p-1.5 ${
+                  className={`relative flex min-h-[40px] flex-col rounded-lg p-1 text-left sm:min-h-[64px] sm:p-1.5 ${
                     !cell.inMonth
                       ? 'pointer-events-none opacity-30'
                       : isToday
@@ -667,8 +667,8 @@ export default function JadwalSection() {
                           : 'bg-slate-50 hover:bg-amber-50 dark:bg-white/[0.04] dark:hover:bg-white/[0.08]'
                   }`}
                 >
-                  <span className={`font-medium ${isToday ? 'text-white' : 'text-slate-700 dark:text-slate-200'}`}>{cell.dayNum}</span>
-                  <div className="mt-1 space-y-0.5">
+                  <span className={`text-xs font-medium sm:text-sm ${isToday ? 'text-white' : 'text-slate-700 dark:text-slate-200'}`}>{cell.dayNum}</span>
+                  <div className="mt-1 hidden min-h-0 flex-1 space-y-0.5 sm:block">
                     {items.slice(0, 1).map((a) => (
                       <div
                         key={a.id}
@@ -685,6 +685,15 @@ export default function JadwalSection() {
                       <div className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">+{items.length - 1}</div>
                     )}
                   </div>
+                  {items.length > 0 && (
+                    <div className="mt-1 flex items-center justify-center sm:hidden">
+                      <span
+                        className={`h-1.5 w-1.5 rounded-full ${
+                          done > 0 ? 'bg-emerald-500' : 'bg-amber-500'
+                        }`}
+                      />
+                    </div>
+                  )}
                 </button>
               );
             })}
